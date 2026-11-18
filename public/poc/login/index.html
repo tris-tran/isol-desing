@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login POC</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/components.css">
+<style>
+  .frame { max-width: 1280px; }
+  .devices { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 36px; align-items: center; padding: 36px 28px; background: var(--color-3); border: var(--line) solid var(--rule-soft); }
+  @media (max-width: 1040px) { .devices { grid-template-columns: minmax(0, 1fr); justify-items: center; } }
+  .device-label { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 10px; text-align: center; }
+  .icon-btn { width: 36px; height: 36px; display: inline-grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--text-muted); cursor: pointer; }
+  svg.i.lg { width: 26px; height: 26px; }
+
+  /* ───────────── Browser window ───────────── */
+  .browser { width: 100%; max-width: 780px; background: var(--color-1); border: var(--line) solid var(--rule); border-radius: 10px; overflow: hidden; box-shadow: 0 18px 40px rgba(74,59,66,.18); justify-self: center; }
+  .chrome { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: #e3d0b0; border-bottom: 1px solid var(--rule-soft); }
+  .chrome .dots { display: flex; gap: 6px; } .chrome .dots i { width: 11px; height: 11px; border-radius: 50%; background: var(--color-4); }
+  .chrome .url { flex: 1; height: 26px; border-radius: 999px; background: var(--color-1); display: flex; align-items: center; gap: 6px; padding: 0 12px; font-size: 13px; color: var(--text-muted); }
+  .chrome .url svg.i { width: 14px; height: 14px; }
+  .page { min-height: 560px; display: grid; }
+
+  /* Component: link this browser (.lnk) */
+  .lnk { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: center; padding: 36px 40px; }
+  .lnk.single { grid-template-columns: minmax(0, 1fr); justify-items: center; align-content: center; gap: 0; text-align: center; max-width: 520px; margin: 0 auto; }
+  .lnk.single h2 { margin-top: 18px; }
+  .lnk h2 { font-size: 28px; font-weight: 500; margin: 6px 0 10px; }
+  .lnk .kicker { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .28em; text-transform: uppercase; color: var(--accent-strong); }
+  .lnk p { margin: 0; color: var(--text-muted); }
+  .steps { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 12px; counter-reset: s; }
+  .steps li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: baseline; counter-increment: s; }
+  .steps li::before { content: counter(s); width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; border: var(--line) solid var(--rule); font-family: var(--font-display); font-weight: 700; font-size: 13px; align-self: start; }
+  .steps b { font-weight: 500; }
+  .fine { margin-top: 18px !important; font-size: 14px; font-style: italic; }
+
+  .qr-side { display: grid; justify-items: center; gap: 12px; }
+  .qr-hold { position: relative; width: 100%; max-width: 320px; }
+  .qr-hold svg { display: block; width: 100%; height: auto; border-radius: 6px; box-shadow: 0 0 0 var(--line) var(--rule-soft); }
+  .qr-hold.dim svg { filter: blur(5px) grayscale(.6); opacity: .45; }
+  .qr-hold .over { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; text-align: center; padding: 20px; }
+  .qr-hold .over b { font-size: 18px; font-weight: 500; }
+  .temp { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 14px; color: var(--text-muted); }
+  .ring { width: 22px; height: 22px; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 3; }
+  .ring .track { stroke: var(--color-4); } .ring .left { stroke: var(--color-10); stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+
+  /* Progress: three steps shared by both screens */
+  .progress { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 12px; text-align: left; }
+  .progress li { display: flex; align-items: center; gap: 12px; color: var(--text-faint); }
+  .progress li .dot { width: 26px; height: 26px; border-radius: 50%; border: var(--line) solid currentColor; display: grid; place-items: center; flex: none; }
+  .progress li .dot svg.i { width: 15px; height: 15px; stroke-width: 2.4; }
+  .progress li.done { color: var(--color-13); }
+  .progress li.done .dot { background: var(--color-13); color: var(--color-1); border-color: var(--color-13); }
+  .progress li.now { color: var(--text); }
+  .progress li.now .dot { border-color: var(--color-14); border-top-color: transparent; animation: spin 1s linear infinite; }
+  .progress li small { display: block; font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .link-art { display: flex; align-items: center; gap: 14px; color: var(--color-15); }
+  .link-art .wire { width: 110px; height: 2px; background: repeating-linear-gradient(90deg, var(--color-14) 0 6px, transparent 6px 12px); background-size: 24px 2px; animation: flow 1s linear infinite; }
+  .link-art.solid .wire { background: var(--color-13); animation: none; }
+  @keyframes flow { to { background-position: 24px 0; } }
+
+  .code { font-family: var(--font-mono); font-size: 46px; letter-spacing: .08em; color: var(--color-15); margin: 14px 0 6px; }
+  .code .gap { display: inline-block; width: .4em; }
+  .seal { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: var(--color-13); color: var(--color-1); box-shadow: 0 0 0 4px var(--color-1), 0 0 0 5.5px var(--color-13); }
+  .seal svg.i { width: 34px; height: 34px; stroke-width: 2.2; }
+  .seal.bad { background: var(--color-10); box-shadow: 0 0 0 4px var(--color-1), 0 0 0 5.5px var(--color-10); }
+  .whoami { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding: 10px 16px 10px 10px; border: 1px solid var(--rule-soft); border-radius: 999px; text-align: left; }
+  .whoami code { display: block; font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); }
+  .av { --s: 40px; width: var(--s); height: var(--s); border-radius: 50%; display: grid; place-items: center; background: var(--color-15); color: var(--color-1); font-family: var(--font-display); font-weight: 500; font-size: 16px; flex: none; }
+  .buttons { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+  .tips { text-align: left; margin: 14px 0 0; padding-left: 18px; color: var(--text-muted); font-size: 15px; }
+
+  /* ───────────── Phone ───────────── */
+  .phone { width: 340px; height: 700px; border-radius: 44px; padding: 12px; background: var(--color-15); box-shadow: 0 18px 40px rgba(74,59,66,.3); justify-self: center; }
+  .screen { position: relative; width: 100%; height: 100%; border-radius: 34px; overflow: hidden; background: var(--color-1); display: grid; grid-template-rows: auto auto minmax(0, 1fr); }
+  .statusbar { display: flex; justify-content: space-between; padding: 12px 24px 4px; font-family: var(--font-mono); font-size: 13px; color: var(--text); }
+  .appbar { display: flex; align-items: center; gap: 6px; padding: 6px 10px 10px; border-bottom: 1px solid var(--rule-soft); }
+  .appbar h3 { margin: 0; font-size: 18px; font-weight: 500; }
+  .pbody { padding: 16px; overflow: hidden; position: relative; }
+  .pbody .lede2 { margin: 0 0 16px; font-size: 14px; color: var(--text-muted); }
+  .pbody h5 { margin: 6px 0 8px; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--text-muted); }
+  .dev { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--rule-soft); }
+  .dev:last-child { border-bottom: 1px solid var(--rule-soft); }
+  .dev .ic { width: 38px; height: 38px; border-radius: 10px; background: var(--color-3); display: grid; place-items: center; color: var(--color-15); flex: none; }
+  .dev .txt { flex: 1; line-height: 1.25; }
+  .dev .txt small { display: block; font-size: 12.5px; color: var(--text-muted); }
+  .dev .txt small .on { color: var(--color-13); }
+  .dev.new { animation: arrive .6s ease; }
+  @keyframes arrive { from { background: rgba(94,105,80,.25); } }
+  .pbtn { width: 100%; height: 46px; margin: 4px 0 18px; }
+
+  /* Camera */
+  .camera { position: absolute; inset: 0; background: #2a2226; display: grid; place-items: center; overflow: hidden; }
+  .camera .scene { width: 230px; transform: perspective(600px) rotateX(14deg) rotateZ(-4deg); filter: saturate(.85) brightness(.85); border-radius: 4px; box-shadow: 0 0 0 14px rgba(242,226,196,.12); }
+  .camera .scene svg { display: block; width: 100%; height: auto; }
+  .finder { position: absolute; width: 250px; height: 250px; left: 50%; top: 50%; transform: translate(-50%, -54%); }
+  .finder i { position: absolute; width: 46px; height: 46px; border: 4px solid var(--color-1); }
+  .finder i:nth-child(1) { left: 0; top: 0; border-right: 0; border-bottom: 0; border-top-left-radius: 14px; }
+  .finder i:nth-child(2) { right: 0; top: 0; border-left: 0; border-bottom: 0; border-top-right-radius: 14px; }
+  .finder i:nth-child(3) { left: 0; bottom: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 14px; }
+  .finder i:nth-child(4) { right: 0; bottom: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 14px; }
+  .finder .beam { position: absolute; left: 12px; right: 12px; height: 2px; background: var(--color-2); box-shadow: 0 0 12px var(--color-2); animation: beam 1.8s ease-in-out infinite alternate; }
+  @keyframes beam { from { top: 14px; } to { top: 234px; } }
+  .camera .hint { position: absolute; left: 16px; right: 16px; bottom: 26px; text-align: center; color: var(--color-1); font-size: 14px; }
+  .camera .hint b { display: block; font-size: 17px; font-weight: 500; margin-bottom: 2px; }
+  .camera .close { position: absolute; top: 14px; left: 14px; color: var(--color-1); }
+  .camera .close:hover { background: rgba(242,226,196,.12); }
+
+  /* Bottom sheet */
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--color-1); border-radius: 22px 22px 0 0; padding: 10px 18px 22px; box-shadow: 0 -10px 30px rgba(42,34,38,.35); animation: up .35s ease; }
+  @keyframes up { from { transform: translateY(100%); } }
+  .sheet .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--color-4); margin: 0 auto 14px; }
+  .sheet h4 { margin: 0 0 4px; font-size: 20px; font-weight: 500; text-align: center; }
+  .sheet .sub { margin: 0; text-align: center; font-size: 14px; color: var(--text-muted); }
+  .sheet .code { font-size: 36px; text-align: center; margin: 12px 0 2px; }
+  .sheet .match { text-align: center; font-size: 13.5px; color: var(--text-muted); margin: 0 0 12px; }
+  .sheet .facts { display: grid; gap: 8px; margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; background: var(--color-3); font-size: 13.5px; }
+  .sheet .facts div { display: flex; justify-content: space-between; gap: 10px; }
+  .sheet .facts span { color: var(--text-muted); }
+  .sheet .facts code { font-family: var(--font-mono); font-size: 13px; }
+  .sheet .warn { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; color: var(--text); margin: 0 0 14px; }
+  .sheet .warn svg.i { color: var(--color-10); flex: none; width: 18px; height: 18px; margin-top: 1px; }
+  .sheet .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sheet .btns .btn { height: 46px; }
+  .shade { position: absolute; inset: 0; background: rgba(42,34,38,.45); }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></symbol>
+  <symbol id="i-laptop" viewBox="0 0 24 24"><rect x="4.5" y="5" width="15" height="10.5" rx="1.5"/><path d="M2.5 19h19"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.2v.3"/></symbol>
+  <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 20h2M20 14v2"/></symbol>
+  <symbol id="i-unlink" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1M4 4l16 16"/></symbol>
+</svg>
+
+<div class="frame">
+  <header class="masthead">
+    <a href="../index.html">← Isol POCs</a>
+    <h1>Log in with your phone</h1>
+    <p>The browser makes a temporary identity and shows it, with a magnet link, as an Isol QR. The phone scans it, the two meet in the swarm, and a secure channel joins them.</p>
+  </header>
+
+  <section class="sect">
+    <div class="toolbar">
+      <div><span class="lbl">Step</span>
+        <div class="segmented" role="group" aria-label="Step" id="step-ctl">
+          <button data-v="waiting" aria-pressed="true">1 · Waiting</button>
+          <button data-v="scanning" aria-pressed="false">2 · Scanning</button>
+          <button data-v="connecting" aria-pressed="false">3 · Connecting</button>
+          <button data-v="confirm" aria-pressed="false">4 · Confirm</button>
+          <button data-v="linked" aria-pressed="false">5 · Linked</button>
+        </div>
+      </div>
+      <div><span class="lbl">Problems</span>
+        <div class="segmented" role="group" aria-label="Problems" id="err-ctl">
+          <button data-v="expired" aria-pressed="false">Code expired</button>
+          <button data-v="declined" aria-pressed="false">Declined</button>
+          <button data-v="failed" aria-pressed="false">Can't connect</button>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" id="play">▶ Play the flow</button>
+    </div>
+
+    <div class="devices">
+      <div style="width:100%;display:grid;justify-items:center">
+        <p class="device-label">Computer · browser</p>
+        <div class="browser">
+          <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="url"><svg class="i"><use href="#i-lock"/></svg>Isol</span></div>
+          <div class="page" id="browser"></div>
+        </div>
+      </div>
+      <div>
+        <p class="device-label">Phone · Isol app</p>
+        <div class="phone"><div class="screen" id="phone"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect">
+    <p class="eyebrow">Design notes</p>
+    <h2>How the flow reads</h2>
+    <div class="notes">
+      <div><h3>Familiar first step</h3><p>"Open Isol on your phone, link a device, point at the code" is the pattern people already know from other messaging apps, so the screen looks like it.</p></div>
+      <div><h3>The code is temporary, and says so</h3><p>Under the QR: the temporary key it holds and a ring counting down to a fresh code. The key only lives in this tab; a new code means a new key and a new magnet.</p></div>
+      <div><h3>Both screens tell the same story</h3><p>Connecting shows the same three steps on both: code scanned, peers found in the swarm, secure channel. The dotted line turns solid once the channel is up.</p></div>
+      <div><h3>A code to compare</h3><p>Before anything is shared, both screens show the same 6-digit code, made from both keys. Checking it is what stops someone who photographed the QR from linking instead of you. The phone is where you say yes.</p></div>
+      <div><h3>The phone stays in charge</h3><p>The sheet says plainly what linking gives the browser: your identity, your chats. Linked browsers appear in the phone's list with Unlink at hand.</p></div>
+      <div><h3>Failures with a way out</h3><p>An expired code blurs with "New code" on top. A decline or a failed connection each say what happened and offer the next step, not just an error.</p></div>
+    </div>
+  </section>
+</div>
+
+<script src="../shared/identity-crypto.js"></script>
+<script src="../shared/isol-qr.global.js"></script>
+<script>
+  const $ = id => document.getElementById(id);
+  const icon = (id, cls = "") => `<svg class="i ${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+  const short = k => `${k.slice(0, 4)}…${k.slice(-4)}`;
+  const QR_LIFE = 60;
+
+  // A fresh temporary identity + magnet per code (mock magnet, real key, real Isol QR).
+  const ME = { name: "Tristan", key: "9dd4994d505e788b2cd3289637f834f142ecde46eefe99acfd0bbc969618543c" };
+  let code;
+  function newCode() {
+    const temp = IsolCrypto.create().publicKey;
+    const hash = Array.from(crypto.getRandomValues(new Uint8Array(20)), b => b.toString(16).padStart(2, "0")).join("");
+    const magnet = `magnet:?xt=urn:btih:${hash}&tr=wss%3A%2F%2Ftracker.webtorrent.dev`;
+    const payload = `isol:link:1:${temp}:${magnet}`;
+    const digits = String(100000 + (parseInt(temp.slice(0, 8), 16) % 900000));
+    code = { temp, payload, svg: isolQr(payload), digits, left: QR_LIFE, bytes: new TextEncoder().encode(payload).length };
+  }
+  newCode();
+
+  const S = { step: "waiting", err: null, progress: 0 };
+  let timer = null, play = null;
+
+  // ── Browser ────────────────────────────────────────────────
+  const ring = (left) => { const c = 2 * Math.PI * 9; return `<svg class="ring" viewBox="0 0 22 22"><circle class="track" cx="11" cy="11" r="9"/><circle class="left" cx="11" cy="11" r="9" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - left / QR_LIFE)}"/></svg>`; };
+  const digitsHtml = d => `${d.slice(0, 3)}<span class="gap"></span>${d.slice(3)}`;
+  const progress = (n) => {
+    const items = [["Code scanned", `temporary key ${short(code.temp)}`], ["Found your phone", "in the swarm, through the magnet"], ["Secure channel", "end-to-end encrypted"]];
+    return `<ol class="progress">${items.map(([t, s], i) => `<li class="${i < n ? "done" : i === n ? "now" : ""}"><span class="dot">${i < n ? icon("check") : ""}</span><span>${t}<small>${s}</small></span></li>`).join("")}</ol>`;
+  };
+
+  function browserHtml() {
+    if (S.err === "declined") return `<div class="lnk single"><div class="seal bad">${icon("x")}</div><h2>Not linked</h2>
+      <p>Linking was cancelled on your phone. Nothing was shared with this browser.</p>
+      <div class="buttons"><button class="btn btn-primary" data-act="restart">${icon("refresh")}Try again</button></div></div>`;
+    if (S.err === "failed") return `<div class="lnk single"><div class="seal bad">${icon("alert")}</div><h2>Couldn't reach your phone</h2>
+      <p>The code was scanned, but the two couldn't find each other in the swarm.</p>
+      <ul class="tips"><li>Keep Isol open on your phone until this finishes.</li><li>Check both are online. They don't need the same Wi-Fi.</li></ul>
+      <div class="buttons"><button class="btn btn-primary" data-act="restart">${icon("refresh")}New code</button></div></div>`;
+
+    if (S.step === "waiting" || S.step === "scanning" || S.err === "expired") {
+      const expired = S.err === "expired";
+      return `<div class="lnk">
+        <div>
+          <div class="kicker">Isol on this computer</div>
+          <h2>Log in with your phone</h2>
+          <ol class="steps">
+            <li><span>Open <b>Isol</b> on your phone</span></li>
+            <li><span>Go to <b>Settings → Linked devices</b></span></li>
+            <li><span>Tap <b>Link a device</b> and point it at this code</span></li>
+          </ol>
+          <p class="fine">Your identity stays on your phone until you approve this browser there.</p>
+        </div>
+        <div class="qr-side">
+          <div class="qr-hold${expired ? " dim" : ""}">${code.svg}
+            ${expired ? `<div class="over"><b>This code expired</b><button class="btn btn-primary btn-sm" data-act="restart">${icon("refresh")}New code</button></div>` : ""}
+          </div>
+          <div class="temp" title="A temporary key made in this tab">${expired ? "" : ring(code.left)}<span>key ${short(code.temp)} · ${expired ? "expired" : `new code in <b id="left">${code.left}s</b>`}</span></div>
+        </div>
+      </div>`;
+    }
+    if (S.step === "connecting") return `<div class="lnk single">
+      <div class="link-art">${icon("laptop", "lg")}<span class="wire"></span>${icon("phone", "lg")}</div>
+      <h2>Connecting to your phone</h2><p>Keep Isol open on your phone.</p>${progress(S.progress)}</div>`;
+    if (S.step === "confirm") return `<div class="lnk single">
+      <div class="link-art solid">${icon("laptop", "lg")}<span class="wire"></span>${icon("phone", "lg")}</div>
+      <h2>Confirm on your phone</h2><p>Your phone should show the same code:</p>
+      <div class="code" aria-label="Code ${code.digits}">${digitsHtml(code.digits)}</div>
+      <p class="fine">If it doesn't match, don't link. Get a new code.</p>
+      <div class="buttons"><button class="btn btn-ghost btn-sm" data-act="restart">Codes don't match</button></div></div>`;
+    return `<div class="lnk single"><div class="seal">${icon("check")}</div><h2>You're in</h2>
+      <p>This browser is linked to your phone. Unlink it from your phone any time.</p>
+      <div class="whoami"><span class="av">T</span><span>${ME.name}<code>${short(ME.key)}</code></span></div>
+      <div class="buttons"><button class="btn btn-accent">Open chats</button></div></div>`;
+  }
+
+  // ── Phone ──────────────────────────────────────────────────
+  const statusbar = `<div class="statusbar"><span>9:41</span><span>● ● ●</span></div>`;
+  const devices = (withNew) => `
+    <div class="appbar"><button class="icon-btn">${icon("back")}</button><h3>Linked devices</h3></div>
+    <div class="pbody">
+      <p class="lede2">Use Isol in a browser on your computer. Your identity stays here; linked browsers get a channel to it.</p>
+      <button class="btn btn-primary pbtn" data-act="scan">${icon("qr")}Link a device</button>
+      <h5>Linked</h5>
+      ${withNew ? `<div class="dev new"><span class="ic">${icon("laptop")}</span><span class="txt">Firefox · Linux<small><span class="on">Active now</span> · linked just now</small></span><button class="icon-btn" title="Unlink">${icon("unlink")}</button></div>` : ""}
+      <div class="dev"><span class="ic">${icon("laptop")}</span><span class="txt">Chrome · Windows<small>Last active 3 days ago</small></span><button class="icon-btn" title="Unlink">${icon("unlink")}</button></div>
+    </div>`;
+  const camera = (sheet = "") => `<div class="camera">
+      <div class="scene">${code.svg}</div>
+      <div class="finder"><i></i><i></i><i></i><i></i>${sheet ? "" : `<span class="beam"></span>`}</div>
+      <button class="icon-btn close" aria-label="Close camera">${icon("x")}</button>
+      ${sheet ? "" : `<div class="hint"><b>Point at the code</b>on your computer screen</div>`}
+    </div>${sheet}`;
+
+  function phoneHtml() {
+    if (S.err === "expired") return statusbar + devices(false);
+    if (S.err === "declined") return statusbar + devices(false);
+    if (S.err === "failed") return statusbar + `<div style="grid-row: span 2">${camera(`<div class="shade"></div><div class="sheet"><div class="grab"></div>
+      <h4>Couldn't connect</h4><p class="sub">Your phone couldn't reach that browser. Ask it for a new code and scan again.</p>
+      <div class="btns" style="margin-top:16px"><button class="btn btn-ghost">Close</button><button class="btn btn-primary" data-act="restart">Scan again</button></div></div>`)}</div>`;
+    if (S.step === "waiting") return statusbar + devices(false);
+    if (S.step === "scanning") return statusbar + `<div style="grid-row: span 2">${camera()}</div>`;
+    if (S.step === "connecting") return statusbar + `<div style="grid-row: span 2">${camera(`<div class="shade"></div><div class="sheet"><div class="grab"></div>
+      <h4>Connecting to the browser</h4><p class="sub">Firefox · Linux</p>${progress(S.progress)}</div>`)}</div>`;
+    if (S.step === "confirm") return statusbar + `<div style="grid-row: span 2">${camera(`<div class="shade"></div><div class="sheet"><div class="grab"></div>
+      <h4>Link this browser?</h4><p class="sub">Firefox · Linux</p>
+      <div class="code" aria-label="Code ${code.digits}">${digitsHtml(code.digits)}</div>
+      <p class="match">Does the computer show the same code?</p>
+      <div class="facts"><div><span>Its temporary key</span><code>${short(code.temp)}</code></div><div><span>It will get</span><b>Your identity and chats</b></div></div>
+      <p class="warn">${icon("alert")}Only link a browser you're sitting in front of.</p>
+      <div class="btns"><button class="btn btn-ghost" data-act="decline">Cancel</button><button class="btn btn-accent" data-act="approve">Link</button></div></div>`)}</div>`;
+    return statusbar + devices(true);
+  }
+
+  function render() {
+    $("browser").innerHTML = browserHtml();
+    $("phone").innerHTML = phoneHtml();
+    document.querySelectorAll("#step-ctl button").forEach(b => b.setAttribute("aria-pressed", !S.err && b.dataset.v === S.step));
+    document.querySelectorAll("#err-ctl button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === S.err));
+  }
+
+  // The code's countdown: update in place, swap to "expired" at zero.
+  function countdown() {
+    clearInterval(timer);
+    timer = setInterval(() => {
+      if (S.step !== "waiting" && S.step !== "scanning") return;
+      code.left -= 1;
+      if (code.left <= 0) { clearInterval(timer); S.err = "expired"; stopPlay(); return render(); }
+      const l = $("left"); if (l) l.textContent = `${code.left}s`;
+      const r = document.querySelector(".ring .left"); if (r) { const c = 2 * Math.PI * 9; r.style.strokeDashoffset = c * (1 - code.left / QR_LIFE); }
+    }, 1000);
+  }
+
+  function go(step, { progress = 0, err = null } = {}) { S.step = step; S.err = err; S.progress = progress; render(); }
+  function restart() { stopPlay(); newCode(); go("waiting"); countdown(); }
+
+  // ── Demo: plays the whole flow ─────────────────────────────
+  function stopPlay() { (play || []).forEach(clearTimeout); play = null; $("play").textContent = "▶ Play the flow"; }
+  function playFlow() {
+    stopPlay(); newCode(); go("waiting"); countdown();
+    $("play").textContent = "■ Stop";
+    const at = (ms, fn) => setTimeout(fn, ms);
+    play = [
+      at(1800, () => go("scanning")),
+      at(4200, () => go("connecting", { progress: 1 })),
+      at(5600, () => go("connecting", { progress: 2 })),
+      at(7000, () => go("confirm")),
+      at(9800, () => { go("linked"); stopPlay(); }),
+    ];
+  }
+
+  // ── Events ─────────────────────────────────────────────────
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const a = b.dataset.act;
+    if (a === "restart") restart();
+    else if (a === "scan") { go("scanning"); setTimeout(() => S.step === "scanning" && !S.err && go("connecting", { progress: 1 }), 2200); }
+    else if (a === "approve") go("linked");
+    else if (a === "decline") go("waiting", { err: "declined" });
+  });
+  $("step-ctl").addEventListener("click", e => {
+    const v = e.target.closest("button")?.dataset.v; if (!v) return;
+    stopPlay(); if (v === "waiting") { code.left = QR_LIFE; countdown(); }
+    go(v, { progress: v === "connecting" ? 1 : 0 });
+  });
+  $("err-ctl").addEventListener("click", e => {
+    const v = e.target.closest("button")?.dataset.v; if (!v) return;
+    stopPlay(); go(v === "failed" ? "connecting" : "waiting", { err: v });
+  });
+  $("play").onclick = () => play ? stopPlay() : playFlow();
+
+  const q = new URLSearchParams(location.search);
+  if (q.get("err")) go(q.get("err") === "failed" ? "connecting" : "waiting", { err: q.get("err") });
+  else go(q.get("step") || "waiting", { progress: +(q.get("progress") || (q.get("step") === "connecting" ? 1 : 0)) });
+  countdown();
+</script>
+</body>
+</html>

@@ -1,0 +1,1273 @@
+{
+  "version": 1,
+  "format": "hex",
+  "theme": "dark",
+  "pairsWith": "palette.json",
+  "source": {
+    "title": "Isolde",
+    "artist": "Aubrey Beardsley",
+    "medium": "colour lithograph",
+    "printer": "W. Griggs",
+    "image": "2010.651_print.jpg",
+    "description": "The night counterpart of the Isolde palette. The grounds are drawn from Aubergine, the darkest ink in the print; the papers become the writing; accents keep their hue and are lifted a step where needed to read on night."
+  },
+  "notes": {
+    "palette": "Fourteen colours in three families. The grounds are new, drawn from Aubergine. The papers become the writing. The accents keep their hue; where one was too dark to read on night, it is lifted a step.",
+    "derived": "derived: true marks colours that aren't in palette.json; from says what they come from. Colours with derived: false are the day colours, reused as they are.",
+    "weights": "weight is the relative share of a colour in a typical night composition (sums to 100; used for the proportion strip).",
+    "labelOn": "Token to use for text placed directly on this colour (whichever of color-1 / night-1 contrasts more).",
+    "fromDay": "fromDay maps each of the 15 day colours (palette.json) to the night colour that does the same job.",
+    "pairings": "Recommended text-on-ground combinations for night, with WCAG 2.x contrast ratios computed from the palette values.",
+    "schemes": "Illustration schemes are the same as in palette.json: pictures keep their own colours at night; only the page around them changes.",
+    "contrastGrades": {
+      "AAA": ">= 7",
+      "AA": ">= 4.5",
+      "AA large": ">= 3",
+      "Decorative": "< 3"
+    }
+  },
+  "colors": [
+    {
+      "name": "night-1",
+      "value": "#1F181C",
+      "label": "Night",
+      "group": "grounds",
+      "role": "The ground",
+      "weight": 40,
+      "derived": true,
+      "from": "Aubergine, darkened",
+      "rgb": [
+        31,
+        24,
+        28
+      ],
+      "hsl": [
+        326,
+        13,
+        11
+      ],
+      "contrastOnNight": 1,
+      "labelOn": "color-1"
+    },
+    {
+      "name": "night-2",
+      "value": "#2A2126",
+      "label": "Dusk",
+      "group": "grounds",
+      "role": "Surfaces, panels",
+      "weight": 10,
+      "derived": true,
+      "from": "Aubergine, darkened",
+      "rgb": [
+        42,
+        33,
+        38
+      ],
+      "hsl": [
+        327,
+        12,
+        15
+      ],
+      "contrastOnNight": 1.11,
+      "labelOn": "color-1"
+    },
+    {
+      "name": "night-3",
+      "value": "#3B2F35",
+      "label": "Shade",
+      "group": "grounds",
+      "role": "Raised ground",
+      "weight": 7,
+      "derived": true,
+      "from": "Aubergine, darkened",
+      "rgb": [
+        59,
+        47,
+        53
+      ],
+      "hsl": [
+        330,
+        11,
+        21
+      ],
+      "contrastOnNight": 1.36,
+      "labelOn": "color-1"
+    },
+    {
+      "name": "night-4",
+      "value": "#54454C",
+      "label": "Rule",
+      "group": "grounds",
+      "role": "Lines and borders; Faint and disabled",
+      "weight": 4,
+      "derived": true,
+      "from": "Aubergine, lightened",
+      "rgb": [
+        84,
+        69,
+        76
+      ],
+      "hsl": [
+        332,
+        10,
+        30
+      ],
+      "contrastOnNight": 1.93,
+      "labelOn": "color-1"
+    },
+    {
+      "name": "night-0",
+      "value": "#140F12",
+      "label": "Abyss",
+      "group": "grounds",
+      "role": "The deepest ground, for what must stand apart",
+      "weight": 3,
+      "derived": true,
+      "from": "Aubergine, darkest",
+      "rgb": [
+        20,
+        15,
+        18
+      ],
+      "hsl": [
+        324,
+        14,
+        7
+      ],
+      "contrastOnNight": 1.09,
+      "labelOn": "color-1"
+    },
+    {
+      "name": "color-1",
+      "value": "#F2E2C4",
+      "label": "Vellum",
+      "group": "inks",
+      "role": "Headlines, the strongest ink",
+      "weight": 8,
+      "derived": false,
+      "from": "color-1",
+      "rgb": [
+        242,
+        226,
+        196
+      ],
+      "hsl": [
+        39,
+        64,
+        86
+      ],
+      "contrastOnNight": 13.64,
+      "labelOn": "night-1"
+    },
+    {
+      "name": "color-3",
+      "value": "#D9C4A5",
+      "label": "Parchment",
+      "group": "inks",
+      "role": "Body text",
+      "weight": 5,
+      "derived": false,
+      "from": "color-3",
+      "rgb": [
+        217,
+        196,
+        165
+      ],
+      "hsl": [
+        36,
+        41,
+        75
+      ],
+      "contrastOnNight": 10.28,
+      "labelOn": "night-1"
+    },
+    {
+      "name": "color-4",
+      "value": "#C7AE8D",
+      "label": "Linen",
+      "group": "inks",
+      "role": "Secondary text",
+      "weight": 4,
+      "derived": false,
+      "from": "color-4",
+      "rgb": [
+        199,
+        174,
+        141
+      ],
+      "hsl": [
+        34,
+        34,
+        67
+      ],
+      "contrastOnNight": 8.18,
+      "labelOn": "night-1"
+    },
+    {
+      "name": "color-7",
+      "value": "#A89C85",
+      "label": "Stone",
+      "group": "inks",
+      "role": "Quiet marks; Fine linework",
+      "weight": 3,
+      "derived": false,
+      "from": "color-7",
+      "rgb": [
+        168,
+        156,
+        133
+      ],
+      "hsl": [
+        39,
+        17,
+        59
+      ],
+      "contrastOnNight": 6.44,
+      "labelOn": "night-1"
+    },
+    {
+      "name": "color-2",
+      "value": "#EC4823",
+      "label": "Vermilion",
+      "group": "accents",
+      "role": "The one loud accent",
+      "weight": 6,
+      "derived": false,
+      "from": "color-2",
+      "rgb": [
+        236,
+        72,
+        35
+      ],
+      "hsl": [
+        11,
+        84,
+        53
+      ],
+      "contrastOnNight": 4.58,
+      "labelOn": "night-1"
+    },
+    {
+      "name": "ember",
+      "value": "#EE7B57",
+      "label": "Ember",
+      "group": "accents",
+      "role": "Emphasis",
+      "weight": 3,
+      "derived": true,
+      "from": "Madder, lifted",
+      "rgb": [
+        238,
+        123,
+        87
+      ],
+      "hsl": [
+        14,
+        82,
+        64
+      ],
+      "contrastOnNight": 6.31,
+      "labelOn": "night-1"
+    },
+    {
+      "name": "color-14",
+      "value": "#C19A4B",
+      "label": "Gilt",
+      "group": "accents",
+      "role": "Ornament, the constant",
+      "weight": 3,
+      "derived": false,
+      "from": "color-14",
+      "rgb": [
+        193,
+        154,
+        75
+      ],
+      "hsl": [
+        40,
+        49,
+        53
+      ],
+      "contrastOnNight": 6.63,
+      "labelOn": "night-1"
+    },
+    {
+      "name": "lichen",
+      "value": "#9DB097",
+      "label": "Lichen",
+      "group": "accents",
+      "role": "Soft highlights; Nature, success",
+      "weight": 2,
+      "derived": true,
+      "from": "Sage and Olive, lifted",
+      "rgb": [
+        157,
+        176,
+        151
+      ],
+      "hsl": [
+        106,
+        14,
+        64
+      ],
+      "contrastOnNight": 7.54,
+      "labelOn": "night-1"
+    },
+    {
+      "name": "patina",
+      "value": "#7DB3B0",
+      "label": "Patina",
+      "group": "accents",
+      "role": "Cool accent, links",
+      "weight": 2,
+      "derived": true,
+      "from": "Verdigris, lifted",
+      "rgb": [
+        125,
+        179,
+        176
+      ],
+      "hsl": [
+        177,
+        26,
+        60
+      ],
+      "contrastOnNight": 7.42,
+      "labelOn": "night-1"
+    }
+  ],
+  "groups": [
+    {
+      "key": "grounds",
+      "title": "Grounds",
+      "note": "Drawn from Aubergine, the print's darkest ink",
+      "tokens": [
+        "night-1",
+        "night-2",
+        "night-3",
+        "night-4",
+        "night-0"
+      ]
+    },
+    {
+      "key": "inks",
+      "title": "Inks",
+      "note": "The papers of the day, now the writing",
+      "tokens": [
+        "color-1",
+        "color-3",
+        "color-4",
+        "color-7"
+      ]
+    },
+    {
+      "key": "accents",
+      "title": "Accents",
+      "note": "Kept, or lifted a step to read on night",
+      "tokens": [
+        "color-2",
+        "ember",
+        "color-14",
+        "lichen",
+        "patina"
+      ]
+    }
+  ],
+  "proportionLegend": [
+    {
+      "label": "Grounds",
+      "groups": [
+        "grounds"
+      ],
+      "weight": 64
+    },
+    {
+      "label": "Inks",
+      "groups": [
+        "inks"
+      ],
+      "weight": 20
+    },
+    {
+      "label": "Accents",
+      "groups": [
+        "accents"
+      ],
+      "weight": 16
+    }
+  ],
+  "semantic": {
+    "paper": "night-1",
+    "ink": "color-1",
+    "rule": "night-4",
+    "accent": "color-2"
+  },
+  "fromDay": [
+    {
+      "day": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "night": {
+        "token": "night-1",
+        "name": "Night",
+        "value": "#1F181C"
+      },
+      "use": "The ground"
+    },
+    {
+      "day": {
+        "token": "color-3",
+        "name": "Parchment",
+        "value": "#D9C4A5"
+      },
+      "night": {
+        "token": "night-3",
+        "name": "Shade",
+        "value": "#3B2F35"
+      },
+      "use": "Raised ground"
+    },
+    {
+      "day": {
+        "token": "color-4",
+        "name": "Linen",
+        "value": "#C7AE8D"
+      },
+      "night": {
+        "token": "night-4",
+        "name": "Rule",
+        "value": "#54454C"
+      },
+      "use": "Lines and borders"
+    },
+    {
+      "day": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "night": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "use": "Headlines, the strongest ink"
+    },
+    {
+      "day": {
+        "token": "color-9",
+        "name": "Sepia Ink",
+        "value": "#655844"
+      },
+      "night": {
+        "token": "color-3",
+        "name": "Parchment",
+        "value": "#D9C4A5"
+      },
+      "use": "Body text"
+    },
+    {
+      "day": {
+        "token": "color-5",
+        "name": "Olive Umber",
+        "value": "#786B55"
+      },
+      "night": {
+        "token": "color-4",
+        "name": "Linen",
+        "value": "#C7AE8D"
+      },
+      "use": "Secondary text"
+    },
+    {
+      "day": {
+        "token": "color-6",
+        "name": "Umber Grey",
+        "value": "#877A64"
+      },
+      "night": {
+        "token": "color-7",
+        "name": "Stone",
+        "value": "#A89C85"
+      },
+      "use": "Quiet marks"
+    },
+    {
+      "day": {
+        "token": "color-8",
+        "name": "Taupe",
+        "value": "#988A73"
+      },
+      "night": {
+        "token": "color-7",
+        "name": "Stone",
+        "value": "#A89C85"
+      },
+      "use": "Fine linework"
+    },
+    {
+      "day": {
+        "token": "color-7",
+        "name": "Stone",
+        "value": "#A89C85"
+      },
+      "night": {
+        "token": "night-4",
+        "name": "Rule",
+        "value": "#54454C"
+      },
+      "use": "Faint and disabled"
+    },
+    {
+      "day": {
+        "token": "color-2",
+        "name": "Vermilion",
+        "value": "#EC4823"
+      },
+      "night": {
+        "token": "color-2",
+        "name": "Vermilion",
+        "value": "#EC4823"
+      },
+      "use": "The one loud accent"
+    },
+    {
+      "day": {
+        "token": "color-10",
+        "name": "Madder",
+        "value": "#BC4D2D"
+      },
+      "night": {
+        "token": "ember",
+        "name": "Ember",
+        "value": "#EE7B57"
+      },
+      "use": "Emphasis"
+    },
+    {
+      "day": {
+        "token": "color-14",
+        "name": "Gilt",
+        "value": "#C19A4B"
+      },
+      "night": {
+        "token": "color-14",
+        "name": "Gilt",
+        "value": "#C19A4B"
+      },
+      "use": "Ornament, the constant"
+    },
+    {
+      "day": {
+        "token": "color-11",
+        "name": "Verdigris",
+        "value": "#528F8D"
+      },
+      "night": {
+        "token": "patina",
+        "name": "Patina",
+        "value": "#7DB3B0"
+      },
+      "use": "Cool accent, links"
+    },
+    {
+      "day": {
+        "token": "color-12",
+        "name": "Sage",
+        "value": "#7A8B76"
+      },
+      "night": {
+        "token": "lichen",
+        "name": "Lichen",
+        "value": "#9DB097"
+      },
+      "use": "Soft highlights"
+    },
+    {
+      "day": {
+        "token": "color-13",
+        "name": "Olive",
+        "value": "#5E6950"
+      },
+      "night": {
+        "token": "lichen",
+        "name": "Lichen",
+        "value": "#9DB097"
+      },
+      "use": "Nature, success"
+    }
+  ],
+  "typography": {
+    "fonts": {
+      "body": "\"Ubuntu\", system-ui, sans-serif",
+      "display": "\"Ubuntu\", system-ui, sans-serif",
+      "mono": "\"Ubuntu Mono\", ui-monospace, monospace",
+      "embedded": [
+        {
+          "family": "Ubuntu",
+          "weights": [
+            300,
+            400,
+            500,
+            700
+          ],
+          "styles": [
+            "normal",
+            "italic (400)"
+          ]
+        },
+        {
+          "family": "Ubuntu Mono",
+          "weights": [
+            400,
+            700
+          ],
+          "styles": [
+            "normal"
+          ]
+        }
+      ],
+      "licence": "Ubuntu Font Licence 1.0 (Latin subset, WOFF2)"
+    },
+    "scale": {
+      "body": {
+        "size": "17px",
+        "lineHeight": 1.5,
+        "mobileSize": "15px"
+      },
+      "hero": {
+        "size": "clamp(48px, 9vw, 96px)",
+        "weight": 300,
+        "letterSpacing": ".32em",
+        "lineHeight": 1,
+        "color": "color-1",
+        "on": "color-2"
+      },
+      "heroLede": {
+        "size": "19px",
+        "style": "italic",
+        "color": "color-1"
+      },
+      "h2": {
+        "size": "36px",
+        "mobileSize": "28px",
+        "weight": 500,
+        "lineHeight": 1.1
+      },
+      "h3": {
+        "size": "15px",
+        "weight": 600,
+        "letterSpacing": ".24em",
+        "transform": "uppercase"
+      },
+      "eyebrow": {
+        "size": "13px",
+        "weight": 600,
+        "letterSpacing": ".28em",
+        "transform": "uppercase",
+        "color": "color-10"
+      },
+      "lede": {
+        "maxWidth": "60ch"
+      },
+      "label": {
+        "size": "12px",
+        "letterSpacing": ".2em",
+        "transform": "uppercase"
+      },
+      "badge": {
+        "size": "11px",
+        "letterSpacing": ".14em",
+        "border": "1px solid currentColor",
+        "padding": "0 6px"
+      },
+      "mono": {
+        "size": "14–14.5px",
+        "lineHeight": 1.6,
+        "family": "mono"
+      },
+      "caption": {
+        "size": "13px",
+        "style": "italic"
+      }
+    }
+  },
+  "layout": {
+    "rule": "1.5px solid var(--rule)",
+    "softRule": "1px solid night-4",
+    "frame": {
+      "note": "Beardsley-style triple-rule frame, in Rule on Night",
+      "maxWidth": "1080px",
+      "css": {
+        "border": "1.5px solid var(--rule)",
+        "outline": "1.5px solid var(--rule)",
+        "outlineOffset": "5px",
+        "boxShadow": "0 0 0 11px var(--paper), 0 0 0 12.5px var(--rule)"
+      }
+    },
+    "heroCurtainLines": {
+      "note": "The two thin curtain lines from the print, drawn over the vermilion field",
+      "color": "color-3",
+      "width": "1.5px",
+      "opacity": 0.85,
+      "positions": [
+        "78%",
+        "90%"
+      ]
+    },
+    "section": {
+      "padding": "56px 40px",
+      "mobilePadding": "40px 20px"
+    },
+    "pagePadding": {
+      "desktop": "32px 16px 64px",
+      "mobile": "24px 16px 48px"
+    },
+    "breakpoint": "760px",
+    "focus": "2px solid color-10, offset 3px",
+    "hover": "translateY(-3px), .15s ease"
+  },
+  "pairings": [
+    {
+      "label": "Headline",
+      "sample": "Love’s potion",
+      "caps": false,
+      "background": {
+        "token": "night-1",
+        "name": "Night",
+        "value": "#1F181C"
+      },
+      "foreground": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "contrast": 13.64,
+      "grade": "AAA"
+    },
+    {
+      "label": "Body text",
+      "sample": "The goblet",
+      "caps": false,
+      "background": {
+        "token": "night-1",
+        "name": "Night",
+        "value": "#1F181C"
+      },
+      "foreground": {
+        "token": "color-3",
+        "name": "Parchment",
+        "value": "#D9C4A5"
+      },
+      "contrast": 10.28,
+      "grade": "AAA"
+    },
+    {
+      "label": "Secondary",
+      "sample": "Act the second",
+      "caps": false,
+      "background": {
+        "token": "night-1",
+        "name": "Night",
+        "value": "#1F181C"
+      },
+      "foreground": {
+        "token": "color-4",
+        "name": "Linen",
+        "value": "#C7AE8D"
+      },
+      "contrast": 8.18,
+      "grade": "AAA"
+    },
+    {
+      "label": "Emphasis",
+      "sample": "Tristan & Isolde",
+      "caps": false,
+      "background": {
+        "token": "night-1",
+        "name": "Night",
+        "value": "#1F181C"
+      },
+      "foreground": {
+        "token": "ember",
+        "name": "Ember",
+        "value": "#EE7B57"
+      },
+      "contrast": 6.31,
+      "grade": "AA"
+    },
+    {
+      "label": "Ornament",
+      "sample": "The chalice",
+      "caps": false,
+      "background": {
+        "token": "night-1",
+        "name": "Night",
+        "value": "#1F181C"
+      },
+      "foreground": {
+        "token": "color-14",
+        "name": "Gilt",
+        "value": "#C19A4B"
+      },
+      "contrast": 6.63,
+      "grade": "AA"
+    },
+    {
+      "label": "Link",
+      "sample": "Cornwall",
+      "caps": false,
+      "background": {
+        "token": "night-1",
+        "name": "Night",
+        "value": "#1F181C"
+      },
+      "foreground": {
+        "token": "patina",
+        "name": "Patina",
+        "value": "#7DB3B0"
+      },
+      "contrast": 7.42,
+      "grade": "AAA"
+    },
+    {
+      "label": "Soft accent",
+      "sample": "The garden",
+      "caps": false,
+      "background": {
+        "token": "night-1",
+        "name": "Night",
+        "value": "#1F181C"
+      },
+      "foreground": {
+        "token": "lichen",
+        "name": "Lichen",
+        "value": "#9DB097"
+      },
+      "contrast": 7.54,
+      "grade": "AAA"
+    },
+    {
+      "label": "On vermilion",
+      "sample": "ISOLDE",
+      "caps": true,
+      "background": {
+        "token": "color-2",
+        "name": "Vermilion",
+        "value": "#EC4823"
+      },
+      "foreground": {
+        "token": "night-1",
+        "name": "Night",
+        "value": "#1F181C"
+      },
+      "contrast": 4.58,
+      "grade": "AA"
+    },
+    {
+      "label": "Inverse",
+      "sample": "Chromo-lith",
+      "caps": false,
+      "background": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "foreground": {
+        "token": "night-1",
+        "name": "Night",
+        "value": "#1F181C"
+      },
+      "contrast": 13.64,
+      "grade": "AAA"
+    },
+    {
+      "label": "On shade",
+      "sample": "Tintagel",
+      "caps": false,
+      "background": {
+        "token": "night-3",
+        "name": "Shade",
+        "value": "#3B2F35"
+      },
+      "foreground": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "contrast": 10.01,
+      "grade": "AAA"
+    },
+    {
+      "label": "On abyss",
+      "sample": "NIGHT",
+      "caps": true,
+      "background": {
+        "token": "night-0",
+        "name": "Abyss",
+        "value": "#140F12"
+      },
+      "foreground": {
+        "token": "color-14",
+        "name": "Gilt",
+        "value": "#C19A4B"
+      },
+      "contrast": 7.22,
+      "grade": "AAA"
+    }
+  ],
+  "schemes": [
+    {
+      "key": "vermilion",
+      "name": "Vermilion curtain",
+      "ground": {
+        "token": "color-2",
+        "name": "Vermilion",
+        "value": "#EC4823"
+      },
+      "field": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "motif": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "accent": {
+        "token": "color-11",
+        "name": "Verdigris",
+        "value": "#528F8D"
+      },
+      "line": {
+        "token": "color-3",
+        "name": "Parchment",
+        "value": "#D9C4A5"
+      },
+      "ink": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "inkOnGround": {
+        "contrast": 2.77,
+        "grade": "Decorative"
+      }
+    },
+    {
+      "key": "vellum",
+      "name": "Vellum",
+      "ground": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "field": {
+        "token": "color-3",
+        "name": "Parchment",
+        "value": "#D9C4A5"
+      },
+      "motif": {
+        "token": "color-2",
+        "name": "Vermilion",
+        "value": "#EC4823"
+      },
+      "accent": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "line": {
+        "token": "color-9",
+        "name": "Sepia Ink",
+        "value": "#655844"
+      },
+      "ink": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "inkOnGround": {
+        "contrast": 8.24,
+        "grade": "AAA"
+      }
+    },
+    {
+      "key": "aubergine",
+      "name": "Aubergine night",
+      "ground": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "field": {
+        "token": "color-9",
+        "name": "Sepia Ink",
+        "value": "#655844"
+      },
+      "motif": {
+        "token": "color-14",
+        "name": "Gilt",
+        "value": "#C19A4B"
+      },
+      "accent": {
+        "token": "color-2",
+        "name": "Vermilion",
+        "value": "#EC4823"
+      },
+      "line": {
+        "token": "color-4",
+        "name": "Linen",
+        "value": "#C7AE8D"
+      },
+      "ink": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "inkOnGround": {
+        "contrast": 8.24,
+        "grade": "AAA"
+      }
+    },
+    {
+      "key": "verdigris",
+      "name": "Verdigris",
+      "ground": {
+        "token": "color-11",
+        "name": "Verdigris",
+        "value": "#528F8D"
+      },
+      "field": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "motif": {
+        "token": "color-2",
+        "name": "Vermilion",
+        "value": "#EC4823"
+      },
+      "accent": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "line": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "ink": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "inkOnGround": {
+        "contrast": 2.84,
+        "grade": "Decorative"
+      }
+    },
+    {
+      "key": "olive",
+      "name": "Olive grove",
+      "ground": {
+        "token": "color-13",
+        "name": "Olive",
+        "value": "#5E6950"
+      },
+      "field": {
+        "token": "color-12",
+        "name": "Sage",
+        "value": "#7A8B76"
+      },
+      "motif": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "accent": {
+        "token": "color-14",
+        "name": "Gilt",
+        "value": "#C19A4B"
+      },
+      "line": {
+        "token": "color-3",
+        "name": "Parchment",
+        "value": "#D9C4A5"
+      },
+      "ink": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "inkOnGround": {
+        "contrast": 4.55,
+        "grade": "AA"
+      }
+    },
+    {
+      "key": "madder",
+      "name": "Madder",
+      "ground": {
+        "token": "color-10",
+        "name": "Madder",
+        "value": "#BC4D2D"
+      },
+      "field": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "motif": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "accent": {
+        "token": "color-14",
+        "name": "Gilt",
+        "value": "#C19A4B"
+      },
+      "line": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "ink": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "inkOnGround": {
+        "contrast": 3.88,
+        "grade": "AA large"
+      }
+    },
+    {
+      "key": "parchment",
+      "name": "Parchment",
+      "ground": {
+        "token": "color-3",
+        "name": "Parchment",
+        "value": "#D9C4A5"
+      },
+      "field": {
+        "token": "color-4",
+        "name": "Linen",
+        "value": "#C7AE8D"
+      },
+      "motif": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "accent": {
+        "token": "color-2",
+        "name": "Vermilion",
+        "value": "#EC4823"
+      },
+      "line": {
+        "token": "color-9",
+        "name": "Sepia Ink",
+        "value": "#655844"
+      },
+      "ink": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "inkOnGround": {
+        "contrast": 6.21,
+        "grade": "AA"
+      }
+    },
+    {
+      "key": "sepia",
+      "name": "Sepia ink",
+      "ground": {
+        "token": "color-9",
+        "name": "Sepia Ink",
+        "value": "#655844"
+      },
+      "field": {
+        "token": "color-5",
+        "name": "Olive Umber",
+        "value": "#786B55"
+      },
+      "motif": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "accent": {
+        "token": "color-11",
+        "name": "Verdigris",
+        "value": "#528F8D"
+      },
+      "line": {
+        "token": "color-4",
+        "name": "Linen",
+        "value": "#C7AE8D"
+      },
+      "ink": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "inkOnGround": {
+        "contrast": 5.42,
+        "grade": "AA"
+      }
+    },
+    {
+      "key": "gilt",
+      "name": "Gilt",
+      "ground": {
+        "token": "color-14",
+        "name": "Gilt",
+        "value": "#C19A4B"
+      },
+      "field": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "motif": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "accent": {
+        "token": "color-10",
+        "name": "Madder",
+        "value": "#BC4D2D"
+      },
+      "line": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "ink": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "inkOnGround": {
+        "contrast": 4,
+        "grade": "AA large"
+      }
+    }
+  ],
+  "schemeRoles": {
+    "ground": "Background of the whole piece",
+    "field": "Large secondary shape (horizon / lower field)",
+    "motif": "Primary figure (sun, emblem)",
+    "accent": "Small jewel detail",
+    "line": "Thin rules, curtain lines, ornaments",
+    "ink": "Text / lettering, haloed by the ground colour"
+  }
+}

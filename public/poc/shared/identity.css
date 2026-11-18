@@ -1,0 +1,130 @@
+/* Identity representation: every way an identity (yours or someone else's) is shown.
+   Markup from shared/identity.js (window.IsolId). Load after tokens.css. */
+
+.id-i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ── Avatar: an initial on a colour read from the key ── */
+.id-av { --s: 40px; position: relative; width: var(--s); height: var(--s); flex: none; border-radius: 50%; display: inline-grid; place-items: center; background: var(--av); color: var(--color-1); font-family: var(--font-display); font-weight: 500; font-size: calc(var(--s) * .42); line-height: 1; }
+.id-av.xs { --s: 20px; font-size: 10px; } .id-av.sm { --s: 28px; } .id-av.lg { --s: 56px; } .id-av.xl { --s: 88px; }
+.id-av.ink { color: var(--color-15); }
+.id-av.keyed { font-family: var(--font-mono); font-size: calc(var(--s) * .32); letter-spacing: -.02em; }
+/* Yours: always Vermilion, with the two curtain lines from the print, ringed. No one else's avatar is Vermilion. */
+.id-av.me { background: var(--color-2); color: var(--color-1); overflow: hidden; box-shadow: 0 0 0 2px var(--color-1), 0 0 0 3.5px var(--color-2); }
+.id-av.me b { position: relative; font-weight: 500; }
+.id-av.me .curtain::before, .id-av.me .curtain::after { content: ""; position: absolute; top: 0; bottom: 0; width: max(1px, calc(var(--s) * .035)); background: var(--color-3); opacity: .85; }
+.id-av.me .curtain::before { left: 72%; } .id-av.me .curtain::after { left: 84%; }
+.id-av.xs.me { box-shadow: 0 0 0 1px var(--color-1), 0 0 0 2px var(--color-2); }
+.id-av.xl.me { box-shadow: 0 0 0 4px var(--color-1), 0 0 0 5.5px var(--color-2); }
+.id-kc.me { padding: 2px; border-radius: 4px; box-shadow: 0 0 0 1.5px var(--color-2); }
+.id-av .seal { position: absolute; right: -3px; bottom: -3px; width: calc(var(--s) * .42); height: calc(var(--s) * .42); min-width: 14px; min-height: 14px; color: var(--color-14); }
+.id-av .seal svg { width: 100%; height: 100%; display: block; }
+.id-av.xs .seal, .id-av.sm .seal { display: none; }
+
+/* ── Key colours: eight swatches read straight from the key ── */
+.id-kc { display: inline-flex; gap: 2px; flex: none; }
+.id-kc i { width: 9px; height: 9px; border-radius: 2px; background: var(--k); }
+.id-kc.lg i { width: 20px; height: 20px; border-radius: 4px; }
+
+/* ── Keys ── */
+.id-key { font-family: var(--font-mono); font-size: .92em; white-space: nowrap; color: var(--text-muted); }
+.id-hex { display: grid; grid-template-columns: repeat(8, max-content); gap: 4px 14px; font-family: var(--font-mono); font-size: 19px; line-height: 1.3; color: var(--text); }
+.id-hex span:nth-child(even) { opacity: .62; }
+.id-hex.four { grid-template-columns: repeat(4, max-content); }
+
+/* ── Names ── */
+.id-name { font-weight: 500; color: var(--text); }
+.id-name.quoted::before { content: "“"; } .id-name.quoted::after { content: "”"; }
+.id-name.keyed { font-family: var(--font-mono); font-weight: 400; }
+.id-calls { color: var(--text-muted); font-size: .9em; }
+.id-calls q { font-style: italic; quotes: "“" "”"; }
+
+/* ── Badges ── */
+.id-badges { display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.id-b { display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 7px; border-radius: 999px; font-family: var(--font-display); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+.id-b .id-i { width: 12px; height: 12px; stroke-width: 2.4; }
+.id-b.verified { background: var(--color-14); color: var(--color-15); }
+.id-b.trusted { background: var(--color-13); color: var(--color-1); }
+.id-b.you { background: var(--color-15); color: var(--color-1); }
+.id-b.stranger { color: var(--text-muted); box-shadow: inset 0 0 0 1px var(--color-7); }
+.id-b.warn { color: var(--color-10); box-shadow: inset 0 0 0 1px var(--color-10); }
+/* Compact marks after a name: icons only */
+.id-marks { display: inline-flex; gap: 3px; align-items: center; vertical-align: -2px; }
+.id-marks .v { color: var(--color-14); } .id-marks .t { color: var(--color-13); } .id-marks .w { color: var(--color-10); }
+.id-marks .id-i { width: 15px; height: 15px; }
+
+/* ── Inline: mention chip and byline ── */
+.id-chip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px 0 2px; border-radius: 999px; background: var(--color-3); color: var(--text); font-size: 14px; vertical-align: middle; cursor: pointer; border: 0; font-family: inherit; }
+.id-chip:hover { background: var(--color-4); }
+.id-chip.warn { box-shadow: inset 0 0 0 1px var(--color-10); }
+.id-chip.me { background: var(--color-2); color: var(--color-1); }
+.id-chip.me:hover { background: var(--color-10); }
+.id-chip.me .id-name { color: var(--color-1); }
+.id-by { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--text-muted); min-width: 0; }
+.id-by .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--av); flex: none; }
+.id-by .id-name { color: var(--text); }
+
+/* ── Row: lists, pickers, members ── */
+.id-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 1px 12px; align-items: center; padding: 9px 12px; border-radius: 10px; text-align: left; width: 100%; background: none; border: 0; font: inherit; color: inherit; }
+.id-row .id-av { grid-row: span 2; }
+.id-row.me { box-shadow: inset 3px 0 0 var(--color-2); background: rgba(236,72,35,.07); border-radius: 0 10px 10px 0; }
+.id-row .l1 { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 16px; }
+.id-row .l1 .id-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.id-row .l2 { grid-column: 2; display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; color: var(--text-muted); }
+.id-row .l2 > :last-child:not(.id-key) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.id-row .end { grid-column: 3; grid-row: 1 / span 2; display: flex; align-items: center; gap: 8px; }
+
+/* ── Header: top of a chat or a profile ── */
+.id-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.id-head > div { min-width: 0; line-height: 1.2; }
+.id-head .l1 { display: flex; align-items: center; gap: 6px; font-size: 17px; white-space: nowrap; }
+.id-head .l2 { font-size: 13.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.id-head .l2 .on { color: var(--color-13); }
+
+/* ── Hover card ── */
+.id-pop { width: 300px; max-width: 100%; border: 1px solid var(--rule-soft); border-radius: 14px; background: var(--color-1); box-shadow: 0 12px 30px rgba(74,59,66,.18); overflow: hidden; }
+.id-pop .top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; align-items: center; padding: 14px 14px 10px; }
+.id-pop .top .id-av { grid-row: span 3; }
+.id-pop .top .n { display: flex; align-items: center; gap: 6px; font-size: 17px; min-width: 0; }
+.id-pop .top .id-calls { font-size: 13px; }
+.id-pop .keyline { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 14px; border-top: 1px solid var(--rule-soft); font-size: 13px; }
+.id-pop .badgeline { padding: 0 14px 10px; }
+.id-pop .warnline { display: flex; gap: 8px; align-items: flex-start; padding: 8px 14px; border-top: 1px solid var(--rule-soft); font-size: 13px; color: var(--color-10); }
+.id-pop .actions { display: flex; border-top: 1px solid var(--rule-soft); }
+.id-pop.me { border-color: var(--color-2); box-shadow: 0 12px 30px rgba(74,59,66,.18), inset 0 3px 0 var(--color-2); }
+.id-pop .actions button { flex: 1; height: 40px; border: 0; background: none; cursor: pointer; font-family: var(--font-display); font-size: 11.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--text); }
+.id-pop .actions button + button { border-left: 1px solid var(--rule-soft); }
+.id-pop .actions button:hover { background: var(--color-3); }
+
+/* ── Profile panel ── */
+.id-card { width: 100%; max-width: 440px; border: var(--line) solid var(--rule); background: var(--color-1); }
+.id-card .who { display: grid; justify-items: center; gap: 6px; padding: 24px 20px 18px; text-align: center; border-bottom: 1px solid var(--rule-soft); }
+.id-card .who .big { font-size: 25px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+/* Your profile: the curtain from the brand header */
+.id-card.me { border-color: var(--color-2); }
+.id-card.me .who { position: relative; overflow: hidden; background: var(--color-2); color: var(--color-1); border-bottom-color: var(--color-2); }
+.id-card.me .who::before, .id-card.me .who::after { content: ""; position: absolute; top: 0; bottom: 0; width: 1.5px; background: var(--color-3); opacity: .85; }
+.id-card.me .who::before { left: 78%; } .id-card.me .who::after { left: 90%; }
+.id-card.me .who > * { position: relative; }
+.id-card.me .who .id-name, .id-card.me .who .id-calls, .id-card.me .who .hint { color: var(--color-1); }
+.id-card.me .who .hint { opacity: .8; }
+.id-card.me .who .id-av.me { box-shadow: 0 0 0 4px var(--color-2), 0 0 0 5.5px var(--color-1); }
+.id-card.me .who .id-b.you { background: var(--color-1); color: var(--color-2); }
+.id-card .who .hint { font-size: 12.5px; color: var(--text-faint); }
+.id-card .sec { padding: 14px 18px; border-bottom: 1px solid var(--rule-soft); }
+.id-card .sec:last-child { border-bottom: 0; }
+.id-card .sec h4 { margin: 0 0 10px; display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--text-muted); }
+.id-card .sec h4 .grow { flex: 1; }
+.id-card .qr { width: 180px; margin: 2px auto 0; }
+.id-card .qr svg { display: block; width: 100%; height: auto; }
+.id-card .warn { display: flex; gap: 8px; margin: 14px 18px 0; padding: 10px 12px; border: var(--line) solid var(--color-10); border-left-width: 5px; border-radius: 2px; font-size: 13.5px; }
+.id-card .warn .id-i { color: var(--color-10); margin-top: 2px; }
+
+/* ── Compare two keys ── */
+.id-compare { display: grid; grid-template-columns: 1fr 1fr; border: var(--line) solid var(--rule); max-width: 620px; }
+.id-compare > div { padding: 14px; display: grid; gap: 10px; justify-items: start; min-width: 0; }
+.id-compare > div + div { border-left: var(--line) solid var(--rule); }
+.id-compare .id-hex { font-size: 16px; gap: 3px 10px; }
+.id-compare .id-hex span.diff { color: var(--color-10); opacity: 1; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.id-compare .id-hex span.same { opacity: .9; }
+.id-compare > div.me { box-shadow: inset 0 3px 0 var(--color-2); background: rgba(236,72,35,.06); }
+.id-compare .mine { font-family: var(--font-display); font-size: 10.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--color-10); }

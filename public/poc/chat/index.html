@@ -1,0 +1,852 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chat POC</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/components.css">
+<link rel="stylesheet" href="../shared/messages.css">
+<style>
+  /* ───────────── Component: chat (.chat-app) ─────────────
+     A conversation pane and, when open, an info pane beside it (wide) or instead of it (phone). */
+  .chat-app {
+    --bubble-in: var(--color-3);
+    --bubble-out: var(--color-15);
+    width: 100%; max-width: 1040px; height: 780px;
+    display: grid; grid-template-columns: minmax(0, 1fr);
+    background: var(--color-1);
+    border: var(--line) solid var(--rule);
+    overflow: hidden; position: relative;
+  }
+  .chat-app.info-open { grid-template-columns: minmax(0, 1fr) 360px; }
+  .stage[data-width=phone] .chat-app { max-width: 390px; height: 800px; }
+  .chat-app.narrow.info-open { grid-template-columns: minmax(0, 1fr); }
+  .chat-app.narrow.info-open .convo { display: none; }
+
+  .icon-btn { width: 38px; height: 38px; display: inline-grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--text-muted); cursor: pointer; flex: none; transition: background .15s, color .15s; }
+  .icon-btn:hover { background: var(--color-3); color: var(--text); }
+  .icon-btn svg.i { width: 20px; height: 20px; }
+
+  /* Avatars, bubbles, times and the special message types: shared/messages.css */
+
+  /* ── Conversation ── */
+  .convo { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto;
+           grid-template-areas: "head" "messages" "composer"; min-width: 0; min-height: 0; }
+  .convo-head { grid-area: head; } .messages { grid-area: messages; } .composer { grid-area: composer; }
+  .convo-head { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 16px; border-bottom: var(--line) solid var(--rule-soft); min-width: 0; }
+  .convo-head .back { display: none; margin-left: -8px; }
+  .narrow .convo-head .back { display: inline-grid; }
+  .convo-head .who { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 4px 6px; margin: -4px -6px; border-radius: var(--r-sm); cursor: pointer; text-align: left; }
+  .convo-head .who:hover { background: rgba(217,196,165,.5); }
+  .convo-head .who > div { min-width: 0; line-height: 1.2; }
+  .convo-head .name { display: flex; align-items: center; gap: 6px; font-weight: 500; font-size: 17px; white-space: nowrap; }
+  .convo-head .name svg.i { width: 16px; height: 16px; }
+  .convo-head .name .verified { color: var(--color-14); }
+  .convo-head .name .muted { color: var(--text-faint); }
+  .convo-head small { display: block; font-size: 13.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .convo-head small code { font-family: var(--font-mono); font-size: 13.5px; }
+  .convo-head small .online { color: var(--color-13); }
+
+
+  /* Scrollbars: a thin Sepia thumb on no track, shown while the pane is hovered or scrolling */
+  .scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: transparent transparent; scrollbar-gutter: stable; transition: scrollbar-color .3s; }
+  .scroll:hover, .scroll.scrolling { scrollbar-color: rgba(101,88,68,.38) transparent; }
+  .scroll::-webkit-scrollbar { width: 10px; }
+  .scroll::-webkit-scrollbar-track { background: transparent; }
+  .scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; }
+  .scroll:hover::-webkit-scrollbar-thumb, .scroll.scrolling::-webkit-scrollbar-thumb { background-color: rgba(101,88,68,.38); }
+  .scroll::-webkit-scrollbar-thumb:hover { background-color: rgba(101,88,68,.6); }
+
+  .messages { overflow-y: auto; padding: 14px 16px 10px; display: flex; flex-direction: column; gap: 2px; scroll-behavior: smooth; }
+  .day { align-self: center; margin: 14px 0 10px; padding: 3px 12px; border-radius: 999px; background: var(--color-3); font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); }
+  .system { align-self: center; margin: 4px 0; font-size: 13px; font-style: italic; color: var(--text-muted); text-align: center; }
+
+  .reply { display: block; margin: 2px -4px 6px; padding: 4px 9px; border-left: 3px solid var(--color-10); border-radius: 6px; background: rgba(74,59,66,.07); font-size: 13.5px; }
+  .out .reply { background: rgba(242,226,196,.12); border-left-color: var(--color-14); }
+  .reply b { display: block; font-size: 12px; font-weight: 700; color: var(--color-10); }
+  .out .reply b { color: var(--color-14); }
+
+  .react { position: absolute; bottom: -12px; padding: 1px 7px; border-radius: 999px; background: var(--color-1); border: 1px solid var(--rule-soft); font-size: 12.5px; color: var(--text); white-space: nowrap; }
+  .out .react { right: 10px; } .in .react { left: 10px; }
+  .msg.has-react { margin-bottom: 16px; }
+
+  /* Photos */
+  .msg { max-width: min(76%, 520px); }
+  .bubble.media { padding: 3px; width: 286px; max-width: 100%; }
+  .bubble.media .sender { padding: 4px 9px 2px; }
+  .photo { display: block; border: 0; padding: 0; cursor: zoom-in; background-color: var(--color-4); background-image: var(--isolde); background-repeat: no-repeat; border-radius: 13px; }
+  .photo.single { width: 100%; aspect-ratio: 4 / 5; }
+  .album { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 100%; }
+  .album .photo { aspect-ratio: 1; border-radius: 4px; position: relative; }
+  .album .photo:nth-child(1) { border-top-left-radius: 13px; } .album .photo:nth-child(2) { border-top-right-radius: 13px; }
+  .album.no-cap .photo:nth-child(3) { border-bottom-left-radius: 13px; } .album.no-cap .photo:nth-child(4) { border-bottom-right-radius: 13px; }
+  .album .more { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(74,59,66,.55); color: var(--color-1); font-size: 24px; font-weight: 500; border-radius: inherit; }
+  .caption { padding: 6px 9px 4px; }
+  .media .photo-wrap { position: relative; }
+  .media .photo-wrap .meta { position: absolute; right: 8px; bottom: 8px; margin: 0; padding: 3px 7px; border-radius: 999px; background: rgba(74,59,66,.6); color: var(--color-1); opacity: 1; }
+
+  /* Voice notes */
+  .voice { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 4px 10px; align-items: center; width: 270px; max-width: 100%; padding: 2px 0; }
+  .voice .play { width: 40px; height: 40px; border-radius: 50%; border: 0; cursor: pointer; display: grid; place-items: center; grid-row: span 2; }
+  .in .voice .play { background: var(--color-15); color: var(--color-1); }
+  .out .voice .play { background: var(--color-1); color: var(--color-15); }
+  .voice .play svg.i { width: 18px; height: 18px; fill: currentColor; stroke: none; }
+  .wave { display: flex; align-items: center; justify-content: space-between; gap: 2px; height: 30px; cursor: pointer; }
+  .wave i { flex: 1 1 0; min-width: 2px; max-width: 4px; border-radius: 2px; background: currentColor; opacity: .32; transition: opacity .1s; }
+  .wave i.on { opacity: 1; }
+  .voice .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .voice .time { font-family: var(--font-mono); font-size: 12.5px; opacity: .8; }
+  .voice .speed { border: 1px solid currentColor; background: none; color: inherit; border-radius: 999px; padding: 0 6px; height: 18px; font-family: var(--font-mono); font-size: 11.5px; cursor: pointer; opacity: .75; }
+  .voice .meta { margin: 0; float: none; }
+
+  /* Typing */
+  .typing { align-self: flex-start; display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--text-muted); }
+  .typing .dots { display: inline-flex; gap: 4px; padding: 11px 13px; border-radius: 16px 16px 16px 5px; background: var(--bubble-in); }
+  .typing .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--color-9); animation: blink 1.2s infinite; }
+  .typing .dots i:nth-child(2) { animation-delay: .2s; } .typing .dots i:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 60%, 100% { opacity: .25; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-2px); } }
+
+  /* ── Composer ── */
+  .composer { border-top: var(--line) solid var(--rule-soft); background: var(--color-1); position: relative; }
+  .tray { display: flex; gap: 8px; padding: 10px 12px 0; overflow-x: auto; }
+  .tray .thumb { position: relative; width: 64px; height: 64px; flex: none; border-radius: 10px; background-image: var(--isolde); border: 1px solid var(--rule-soft); }
+  .tray .thumb button { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--color-1); background: var(--color-15); color: var(--color-1); display: grid; place-items: center; cursor: pointer; padding: 0; }
+  .tray .thumb button svg.i { width: 12px; height: 12px; stroke-width: 2.4; }
+  .tray .add { width: 64px; height: 64px; flex: none; border-radius: 10px; border: 1.5px dashed var(--color-8); background: none; color: var(--text-muted); display: grid; place-items: center; cursor: pointer; }
+  .bar { display: flex; align-items: flex-end; gap: 4px; padding: 8px 10px; }
+  .field { flex: 1; min-width: 0; display: flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 22px; background: var(--color-3); border: var(--line) solid transparent; }
+  .field:focus-within { background: var(--color-1); border-color: var(--color-10); }
+  .field textarea { flex: 1; min-width: 0; border: 0; background: none; outline: none; resize: none; font-family: var(--font-body); font-size: 16px; line-height: 1.35; padding: 11px 0; max-height: 120px; color: var(--text); height: 44px; }
+  .field textarea::placeholder { color: var(--color-5); }
+  .round { width: 44px; height: 44px; border-radius: 50%; border: 0; display: grid; place-items: center; cursor: pointer; flex: none; transition: background .15s, transform .1s; }
+  .round:active { transform: scale(.95); }
+  .round svg.i { width: 20px; height: 20px; }
+  .round.send { background: var(--color-10); color: var(--color-1); }
+  .round.send:hover { background: var(--color-2); }
+  .round.mic { background: var(--color-15); color: var(--color-1); }
+  .round.mic:hover { background: var(--color-9); }
+
+  .recorder { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 14px; border-radius: 22px; background: var(--color-3); }
+  .recorder .rec { width: 10px; height: 10px; border-radius: 50%; background: var(--color-2); animation: pulse 1s ease-in-out infinite; flex: none; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  .recorder .clock { font-family: var(--font-mono); font-size: 15px; min-width: 4ch; }
+  .recorder .live { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 2px; height: 26px; overflow: hidden; color: var(--color-15); }
+  .recorder .live i { width: 3px; flex: none; border-radius: 2px; background: currentColor; }
+
+  /* ── Info pane (chat settings) ── */
+  .info { border-left: var(--line) solid var(--rule-soft); display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; background: var(--color-1); }
+  .narrow .info { border-left: 0; }
+  .info-head { display: flex; align-items: center; gap: 6px; padding: 10px 10px 10px 16px; border-bottom: var(--line) solid var(--rule-soft); }
+  .info-head h3 { flex: 1; margin: 0; font-size: 17px; font-weight: 500; }
+  .info-head .back { display: none; margin-left: -8px; }
+  .narrow .info-head .back { display: inline-grid; }
+  .narrow .info-head .close { display: none; }
+  .info-body { overflow-y: auto; padding-bottom: 24px; }
+
+  .hero { display: grid; justify-items: center; gap: 6px; padding: 22px 16px 18px; text-align: center; border-bottom: 1px solid var(--rule-soft); }
+  .hero .title { display: flex; align-items: center; gap: 6px; font-size: 22px; font-weight: 500; margin-top: 6px; }
+  .hero .title .verified { color: var(--color-14); width: 20px; height: 20px; }
+  .hero .edit { width: 30px; height: 30px; }
+  .hero .edit svg.i { width: 16px; height: 16px; }
+  .hero .sub { font-size: 14px; color: var(--text-muted); max-width: 30ch; }
+  .hero code { font-family: var(--font-mono); font-size: 14px; color: var(--text-muted); }
+  .hero .quick { display: flex; gap: 8px; margin-top: 10px; }
+  .hero .quick button { display: grid; justify-items: center; gap: 4px; width: 76px; padding: 9px 0 7px; border: 1px solid var(--rule-soft); border-radius: 10px; background: none; cursor: pointer; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--text); }
+  .hero .quick button:hover { background: var(--color-3); }
+  .hero .quick svg.i { width: 20px; height: 20px; color: var(--color-15); }
+
+  .sec { padding: 14px 16px 6px; border-bottom: 1px solid var(--rule-soft); }
+  .sec h4 { margin: 0 0 6px; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--text-muted); display: flex; justify-content: space-between; align-items: baseline; }
+  .sec h4 a, .sec h4 button { font: inherit; letter-spacing: .08em; text-transform: none; color: var(--color-13); background: none; border: 0; cursor: pointer; padding: 0; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 9px 0; min-height: 46px; }
+  .row + .row { border-top: 1px solid rgba(199,174,141,.45); }
+  .row > svg.i { width: 20px; height: 20px; color: var(--text-muted); }
+  .row .txt { flex: 1; min-width: 0; line-height: 1.25; }
+  .row .txt small { display: block; font-size: 13px; color: var(--text-muted); }
+  .row .txt code { font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); }
+  .row .chev { width: 18px; height: 18px; color: var(--text-faint); }
+  .row.link { cursor: pointer; margin: 0 -16px; padding-left: 16px; padding-right: 16px; }
+  .row.link:hover { background: rgba(217,196,165,.4); }
+  .row.danger, .row.danger > svg.i { color: var(--color-10); }
+  .role { font-family: var(--font-display); font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; border: 1px solid currentColor; color: var(--color-13); }
+  .role.you { color: var(--text-faint); }
+
+  .switch { appearance: none; width: 40px; height: 22px; margin: 0; border-radius: 999px; background: var(--color-7); position: relative; cursor: pointer; flex: none; transition: background .2s; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--color-1); transition: transform .2s; }
+  .switch:checked { background: var(--color-13); }
+  .switch:checked::after { transform: translateX(18px); }
+  .seg { display: flex; border: 1px solid var(--rule); border-radius: 999px; overflow: hidden; margin: 4px 0 8px; }
+  .seg button { flex: 1; border: 0; background: none; padding: 6px 4px; cursor: pointer; font-family: var(--font-display); font-size: 11.5px; font-weight: 700; letter-spacing: .04em; }
+  .seg button + button { border-left: 1px solid var(--rule-soft); }
+  .seg button[aria-pressed=true] { background: var(--color-15); color: var(--color-1); }
+
+  .media-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin: 4px 0 10px; }
+  .media-grid .photo { aspect-ratio: 1; border-radius: 6px; }
+
+  .keybox { margin: 4px 0 10px; padding: 10px 12px; border-radius: 10px; background: var(--color-3); }
+  .keybox .hex { grid-template-columns: repeat(4, max-content); gap: 2px 12px; font-size: 16px; justify-content: center; }
+  .keybox p { margin: 8px 0 0; font-size: 13px; color: var(--text-muted); text-align: center; }
+
+  /* Overlays */
+  .overlay { position: absolute; inset: 0; z-index: 5; background: rgba(74,59,66,.72); display: none; place-items: center; padding: 20px; cursor: zoom-out; }
+  .overlay.open { display: grid; }
+  .overlay .big { width: min(100%, 560px); aspect-ratio: 4 / 5; max-height: 100%; border-radius: 10px; background-image: var(--isolde); background-repeat: no-repeat; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+  .overlay .qrbox { width: min(100%, 380px); background: var(--color-1); border-radius: 14px; padding: 16px; display: grid; gap: 10px; text-align: center; cursor: default; }
+  .overlay .qrbox svg { width: 100%; height: auto; display: block; }
+  .overlay .qrbox b { font-weight: 500; font-size: 17px; }
+  .overlay .qrbox small { color: var(--text-muted); font-size: 13.5px; }
+
+  .toolbar .check { font-size: 14px; }
+
+  /* + menu and creation sheets */
+  svg.i.xs { width: 14px; height: 14px; vertical-align: -2px; }
+  .attach-menu { position: absolute; left: 10px; bottom: calc(100% + 8px); z-index: 3; width: 230px; padding: 6px; border-radius: 14px; background: var(--color-1); border: 1px solid var(--rule-soft); box-shadow: 0 12px 30px rgba(74,59,66,.22); display: grid; animation: pop .18s ease; }
+  @keyframes pop { from { opacity: 0; transform: translateY(6px); } }
+  .attach-menu button { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 10px; border: 0; border-radius: 9px; background: none; cursor: pointer; font: inherit; font-size: 15px; color: var(--text); text-align: left; }
+  .attach-menu button:hover { background: var(--color-3); }
+  .attach-menu .mi { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--color-1); flex: none; }
+  .attach-menu .mi svg.i { width: 17px; height: 17px; }
+  .attach-menu small { display: block; font-size: 12px; color: var(--text-muted); line-height: 1.2; }
+  .round.plus { background: var(--color-3); color: var(--color-15); width: 40px; height: 40px; margin-bottom: 2px; }
+  .round.plus.on { background: var(--color-15); color: var(--color-1); transform: rotate(45deg); }
+  .round.plus { transition: transform .2s, background .2s; }
+
+  .csheet { padding: 12px 14px 14px; display: grid; gap: 10px; max-height: 430px; overflow-y: auto; max-width: 560px; }
+  .csheet .map { max-width: none; }
+  .csheet header { display: flex; align-items: center; gap: 8px; }
+  .csheet header h4 { flex: 1; margin: 0; font-size: 16px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+  .csheet header h4 svg.i { width: 18px; height: 18px; color: var(--color-10); }
+  .csheet.secret-sheet header h4 svg.i { color: var(--color-14); }
+  .csheet input[type=text], .csheet textarea { width: 100%; height: 40px; padding: 0 12px; border: var(--line) solid var(--color-4); border-radius: 10px; background: var(--color-1); font-family: var(--font-body); font-size: 15px; color: var(--text); }
+  .csheet textarea { height: 76px; padding: 9px 12px; resize: none; line-height: 1.35; }
+  .csheet input:focus, .csheet textarea:focus { outline: none; border-color: var(--color-10); }
+  .csheet .opt-row { display: flex; gap: 8px; align-items: center; }
+  .csheet .opt-row span { font-family: var(--font-mono); font-size: 13px; color: var(--text-faint); width: 2ch; text-align: right; }
+  .csheet .addopt { justify-self: start; border: 0; background: none; color: var(--color-13); font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: .08em; cursor: pointer; padding: 2px 0; }
+  .csheet .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .csheet .lbl2 { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--text-muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { height: 30px; padding: 0 11px; border: 1px solid var(--rule); border-radius: 999px; background: none; cursor: pointer; font: inherit; font-size: 13.5px; color: var(--text); }
+  .chips button[aria-pressed=true] { background: var(--color-15); border-color: var(--color-15); color: var(--color-1); }
+  .seal-line { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: #3b2f35; color: var(--color-1); font-size: 14px; }
+  .seal-line b { font-weight: 500; }
+  .seal-line code { font-family: var(--font-mono); font-size: 12px; color: var(--color-4); }
+  .csheet .note { margin: 0; font-size: 13px; color: var(--text-muted); }
+  .csheet .send-row { display: flex; justify-content: flex-end; gap: 8px; }
+  .btn-seal { background: #3b2f35; border-color: #3b2f35; color: var(--color-14); }
+  .btn-seal:hover { background: var(--color-15); }
+  .live-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .live-opts button { height: 40px; border: 1px solid var(--rule); border-radius: 10px; background: none; cursor: pointer; font: inherit; font-size: 14px; }
+  .live-opts button:hover { background: var(--color-3); }
+  .csheet .map { border-radius: 10px; overflow: hidden; line-height: 0; }
+  .csheet .map svg { width: 100%; height: auto; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M20.5 16l-5-5-8.5 8.5"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M4.5 12L20 4.5 15.5 20l-3.5-6.5z"/><path d="M12 13.5l8-9"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6.5" y="5" width="4" height="14" rx="1"/><rect x="13.5" y="5" width="4" height="14" rx="1"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-check2" viewBox="0 0 24 24"><path d="M2.5 12.5l4.5 4.5L16.5 7.5M12 16.5l.5.5L22 7.5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M15 5l4 4L8.5 19.5H4.5v-4z"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z"/><path d="M10 20.5h4"/></symbol>
+  <symbol id="i-bell-off" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 9.5-4.9M18 11v5.5l1.5 1.5H8"/><path d="M10 20.5h4M4 4l16 16"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7.5 3v5.5c0 4.5-3.2 8-7.5 9.5-4.3-1.5-7.5-5-7.5-9.5V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></symbol>
+  <symbol id="i-verified" viewBox="0 0 24 24"><path d="M12 2.5l2.4 2 3.1-.3.9 3 2.6 1.7-1.2 2.9 1.2 2.9-2.6 1.7-.9 3-3.1-.3-2.4 2-2.4-2-3.1.3-.9-3L2.9 14.5l1.2-2.9-1.2-2.9 2.6-1.7.9-3 3.1.3z" fill="currentColor" stroke="none"/><path d="M8.5 12.2l2.4 2.4 4.6-4.8" stroke="#F2E2C4" stroke-width="2"/></symbol>
+  <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 20h2M20 14v2"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-user-plus" viewBox="0 0 24 24"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 19.5a6.5 6.5 0 0 1 13 0M19 8v6M16 11h6"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-block" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/></symbol>
+  <symbol id="i-leave" viewBox="0 0 24 24"><path d="M14 4.5h4.5v15H14M10 8l-4 4 4 4M6 12h10"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-poll" viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-6"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21z"/><circle cx="12" cy="10" r="2.3"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-hourglass" viewBox="0 0 24 24"><path d="M6.5 3h11M6.5 21h11M7.5 3c0 5 9 6 9 9s-9 4-9 9M16.5 3c0 5-9 6-9 9s9 4 9 9"/></symbol>
+  <symbol id="i-live" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.5"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M5 5a10 10 0 0 0 0 14M19 5a10 10 0 0 1 0 14"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+</svg>
+
+<div class="frame">
+  <header class="masthead">
+    <a href="../index.html">← Isol POCs</a>
+    <h1>Chat</h1>
+    <p>One-to-one and group conversations: text, photos and voice notes, and the settings behind each chat.</p>
+  </header>
+
+  <section class="sect">
+    <div class="toolbar">
+      <div><span class="lbl">Chat</span>
+        <div class="segmented" role="group" aria-label="Chat" id="chat-ctl">
+          <button data-v="direct" aria-pressed="true">1:1</button>
+          <button data-v="group" aria-pressed="false">Group</button>
+        </div>
+      </div>
+      <div><span class="lbl">Settings</span>
+        <div class="segmented" role="group" aria-label="Settings" id="info-ctl">
+          <button data-v="closed" aria-pressed="true">Closed</button>
+          <button data-v="open" aria-pressed="false">Open</button>
+        </div>
+      </div>
+      <div><span class="lbl">Composer</span>
+        <div class="segmented" role="group" aria-label="Composer" id="comp-ctl">
+          <button data-v="idle" aria-pressed="true">Idle</button>
+          <button data-v="typing" aria-pressed="false">Typing</button>
+          <button data-v="recording" aria-pressed="false">Recording</button>
+          <button data-v="photos" aria-pressed="false">Photos</button>
+          <button data-v="menu" aria-pressed="false">+ Menu</button>
+          <button data-v="poll" aria-pressed="false">Poll</button>
+          <button data-v="place" aria-pressed="false">Location</button>
+          <button data-v="event" aria-pressed="false">Event</button>
+          <button data-v="secret" aria-pressed="false">Secret</button>
+        </div>
+      </div>
+      <div><span class="lbl">Width</span>
+        <div class="segmented" role="group" aria-label="Width" id="width-ctl">
+          <button data-v="wide" aria-pressed="true">Wide</button>
+          <button data-v="phone" aria-pressed="false">Phone</button>
+        </div>
+      </div>
+      <label class="check"><input type="checkbox" id="typing-ctl"> They're typing</label>
+    </div>
+
+    <div class="stage" id="stage" data-width="wide">
+      <div class="chat-app" id="app"></div>
+    </div>
+  </section>
+
+  <section class="sect">
+    <p class="eyebrow">Design notes</p>
+    <h2>Why it looks like this</h2>
+    <div class="notes">
+      <div><h3>Light by default</h3><p>Parchment for what you receive, Aubergine for what you send, Vellum around it. No textures or wallpaper; colour is saved for meaning: Madder for actions and sender names, Gilt for read and verified, Olive for "on".</p></div>
+      <div><h3>Bubbles that group</h3><p>Messages from the same person run together: only the last one in a run gets the avatar and the tighter tail corner. Group messages show the sender's name in their own colour on the first bubble.</p></div>
+      <div><h3>Photos fill the bubble</h3><p>A single photo is 4:5. Several become an album in a 2×2 grid with a "+n" tile. With no caption, the time sits on the photo in a small pill.</p></div>
+      <div><h3>Voice notes you can scrub</h3><p>A play button, a waveform that fills as it plays, the time, and a speed chip. Click anywhere on the waveform to jump. Recording replaces the text field with a pulsing dot, a clock and a live waveform.</p></div>
+      <div><h3>Peer to peer, honestly</h3><p>A clock instead of ticks means the message is waiting for that person to come online. One tick is sent, two are delivered, Gilt is read.</p></div>
+      <div><h3>Polls</h3><p>Options are buttons; results, percentages and the first voters appear once you've voted, and you can change your vote. Single or multiple choice, with a closing time.</p></div>
+      <div><h3>Location: a pin or live</h3><p>A small map in the palette with a Madder pin, the place and its coordinates. Live location pulses, says how long is left, and stops by itself.</p></div>
+      <div><h3>Events</h3><p>A calendar-page date (Madder month, big day), the time and place, and Going / Maybe / Can't with counts and who's going. "Add to calendar" for your own calendar app.</p></div>
+      <div><h3>Future secrets</h3><p>A sealed card in Beardsley's triple-rule frame with Gilt hairlines. Shimmering bars stand in for the text, with the opening date, a live countdown, and the drand round it's locked to. When the time comes it glows: "Unseal" reveals the text.</p></div>
+      <div><h3>The + menu</h3><p>One button for everything you can send besides text and voice: photo, poll, location, event, future secret. Each opens a short sheet in place of the text field.</p></div>
+      <div><h3>Names are yours</h3><p>An identity is just a key, so the name you see is one you chose ("only you see this name"). The key is always one tap away, and you can verify it in person with the Isol QR.</p></div>
+    </div>
+  </section>
+</div>
+
+<script src="../shared/isol-qr.global.js"></script>
+<script src="../shared/messages.js"></script>
+<script src="../shared/isolde-480.js"></script>
+<script>
+  document.documentElement.style.setProperty("--isolde", `url("${window.ISOLDE_JPG}")`);
+  IsolMsg.ensureSprite();
+  const $ = id => document.getElementById(id);
+  const app = $("app"), stage = $("stage");
+  const icon = (id, cls = "") => `<svg class="i ${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+  const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const short = k => `${k.slice(0, 6)}…${k.slice(-4)}`;
+
+  // ── People and chats (mock data) ───────────────────────────
+  const C = { aubergine: "#4A3B42", madder: "#BC4D2D", verdigris: "#528F8D", olive: "#5E6950", sepia: "#655844", gilt: "#C19A4B", umber: "#786B55",
+               vellum: "#F2E2C4", parchment: "#D9C4A5", linen: "#C7AE8D", vermilion: "#EC4823", sage: "#7A8B76" };
+  const P = {
+    me:        { name: "Tristan",  key: "9dd4994d505e788b2cd3289637f834f142ecde46eefe99acfd0bbc969618543c", color: C.aubergine },
+    isolde:    { name: "Isolde",   key: "e8bcf3823669444d0b49ad45d65088635d9fd8500a75b5f20b59abefa56a144f", color: C.madder },
+    brangaene: { name: "Brangäne", key: "17162c921dc4d2518f9a101db33695df1afb56ab82f5ff3e5da6eec3ca5cd917", color: C.verdigris },
+    mark:      { name: "Mark",     key: "4e344c1b0f9d2a154d3a52060d06295ca4c4448f42896ebca9c0203d5f3e6bd1", color: C.olive },
+    kurwenal:  { name: "Kurwenal", key: "57b0338330f79848dd9c52ed310cc4b542f0ed1a8a892b8e47ce5a99fbff6372", color: C.gilt },
+  };
+  // Name colours in group bubbles (readable on Parchment)
+  const NAME_INK = { isolde: C.madder, brangaene: "#3f716f", mark: C.olive, kurwenal: "#8a6a26", me: C.aubergine };
+  const initials = n => n.slice(0, 1).toUpperCase();
+  const avatar = (who, cls = "") => `<span class="av ${cls}${P[who].color === C.gilt ? " dark-ink" : ""}" style="--av:${P[who].color}" aria-hidden="true">${initials(P[who].name)}</span>`;
+
+  // Photo crops of the Isolde print: [background-size, position]
+  const CROPS = { goblet: ["330%", "68% 34%"], flowers: ["300%", "50% 6%"], chain: ["420%", "74% 62%"], curtain: ["260%", "92% 20%"], gown: ["240%", "30% 80%"], face: ["380%", "56% 18%"] };
+  const photo = (c, cls = "single") => `<button class="photo ${cls}" data-act="view" data-crop="${c}" style="background-size:${CROPS[c][0]};background-position:${CROPS[c][1]}" aria-label="Photo"></button>`;
+
+  const dayAt = (days, h, m = 0) => { const d = new Date(Date.now() + days * 864e5); d.setHours(h, m, 0, 0); return d; };
+  function nextXmas() { const n = new Date(); let d = new Date(n.getFullYear(), 11, 24, 20, 0); if (d <= n) d = new Date(n.getFullYear() + 1, 11, 24, 20, 0); return d; }
+
+  const CHATS = {
+    direct: {
+      kind: "direct", with: "isolde",
+      settings: { mute: false, verified: true, autoPhotos: true, autoVoice: true, receipts: true, typing: true },
+      messages: [
+        { day: "Yesterday" },
+        { from: "isolde", t: "21:40", text: "Did the ship make it to Cornwall?" },
+        { from: "me", t: "21:52", text: "Just docked. The sea was kind tonight.", status: "read" },
+        { from: "me", t: "21:52", text: "I'll tell you everything tomorrow.", status: "read" },
+        { day: "Today" },
+        { from: "isolde", t: "09:12", text: "Send me a picture of the goblet when you can 🙏" },
+        { from: "me", t: "09:30", photos: ["goblet"], caption: "Found it in the hold. Gilt all the way round.", status: "read" },
+        { from: "isolde", t: "09:31", reply: { who: "You", text: "📷 Photo" }, text: "Do NOT drink from that." },
+        { from: "isolde", t: "09:31", voice: { dur: 14, seed: 3 } },
+        { from: "me", t: "09:34", voice: { dur: 6, seed: 7 }, status: "delivered" },
+        { from: "me", t: "09:35", text: "Too late? 😅", status: "read" },
+        { from: "isolde", t: "09:40", place: { name: "Isolde's location", addr: "Tintagel, Cornwall", coords: "50.6630° N, 4.7505° W", live: { total: 60, left: 12 } } },
+        { from: "isolde", t: "09:41", secret: { when: new Date(Date.now() - 60 * 60 * 1000), sealed: "1 Sep", text: "The goblet was never poisoned. I switched it before you came aboard." } },
+        { from: "me", t: "09:44", secret: { when: nextXmas(), sealed: "today" }, status: "delivered" },
+      ],
+    },
+    group: {
+      kind: "group", name: "Cornwall", color: C.verdigris,
+      members: ["me", "isolde", "brangaene", "mark", "kurwenal"], admins: ["me", "isolde"],
+      description: "Getting the ship home, and everyone on it.",
+      settings: { mute: true, autoPhotos: true, autoVoice: false, whoSends: "all", whoEdits: "admins" },
+      messages: [
+        { day: "Today" },
+        { system: "Isolde created the group “Cornwall”" },
+        { system: "Isolde added Brangäne, Mark and Kurwenal" },
+        { from: "brangaene", t: "10:02", text: "Who has the key to the chapel?" },
+        { from: "kurwenal", t: "10:04", text: "Mark does. He never lets it go." },
+        { from: "mark", t: "10:05", photos: ["curtain", "flowers", "chain", "gown", "face", "goblet"], caption: "Proof: the chapel, the garden and the key" },
+        { from: "isolde", t: "10:07", voice: { dur: 23, seed: 11 } },
+        { from: "isolde", t: "10:07", text: "Listen to that before anyone sails anywhere." },
+        { from: "brangaene", t: "10:08", poll: { q: "When do we sail?", closes: "Thu 20:00", options: [{ label: "Friday at dawn", voters: ["isolde", "mark"] }, { label: "Saturday noon", voters: ["brangaene", "kurwenal", "me"] }, { label: "Wait for calm seas", voters: [] }] } },
+        { from: "isolde", t: "10:08", event: { title: "Sailing for Cornwall", start: dayAt(5, 12), end: dayAt(5, 18), place: "Tintagel harbour", going: ["isolde", "me", "kurwenal"], maybe: ["mark"], no: [] } },
+        { from: "mark", t: "10:08", place: { name: "Tintagel harbour", addr: "Harbour Rd, Tintagel", coords: "50.6680° N, 4.7590° W" } },
+        { from: "me", t: "10:09", text: "I can be there by noon.", status: "read", react: "♥ 2" },
+        { from: "me", t: "10:10", text: "Mark, I'll bring the map.", status: "pending" },
+      ],
+    },
+  };
+
+  // ── State ──────────────────────────────────────────────────
+  const S = { chat: "direct", info: false, composer: "idle", draft: "", theyType: false, playing: null, rec: 0, photosDraft: ["flowers", "goblet"] };
+  const audio = {}; // per voice message: { pos: seconds, speed }
+  let tick = null, recTick = null;
+
+  // ── Messages ───────────────────────────────────────────────
+  function waveform(seed, n = 38) {
+    let s = seed * 9301 + 49297, out = [];
+    for (let i = 0; i < n; i++) { s = (s * 9301 + 49297) % 233280; const r = s / 233280; out.push(0.25 + 0.75 * Math.abs(Math.sin(i * 0.42 + seed) * 0.6 + r * 0.5)); }
+    return out.map(v => Math.min(1, v));
+  }
+  const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+
+  function statusIcon(st) {
+    if (!st) return "";
+    if (st === "pending") return `<span class="pending" title="Waiting for them to come online">${icon("clock")}</span>`;
+    if (st === "sent") return icon("check");
+    return `<span class="${st === "read" ? "read" : ""}" title="${st === "read" ? "Read" : "Delivered"}">${icon("check2")}</span>`;
+  }
+  const meta = m => `<span class="meta">${m.t}${m.from === "me" ? statusIcon(m.status) : ""}</span>`;
+
+  function voiceHtml(id, m) {
+    const a = audio[id] ||= { pos: 0, speed: 1 };
+    const bars = waveform(m.voice.seed), on = Math.round((a.pos / m.voice.dur) * bars.length);
+    const playing = S.playing === id;
+    return `<div class="voice" data-voice="${id}">
+      <button class="play" data-act="play" aria-label="${playing ? "Pause" : "Play"} voice note">${icon(playing ? "pause" : "play")}</button>
+      <div class="wave" data-act="seek">${bars.map((h, i) => `<i class="${i < on ? "on" : ""}" style="height:${Math.round(h * 100)}%"></i>`).join("")}</div>
+      <div class="row"><span class="time">${a.pos > 0 ? mmss(a.pos) + " / " : ""}${mmss(m.voice.dur)}</span>
+        <span style="display:flex;gap:6px;align-items:center"><button class="speed" data-act="speed">${a.speed}×</button>${meta(m)}</span></div>
+    </div>`;
+  }
+
+  // Polls, places, events and future secrets come from shared/messages.js (IsolMsg).
+  const { drandRound, fmtRound, fmtDate, mapSvg } = IsolMsg;
+  const msgById = id => { const [ck, idx] = id.split("-"); return CHATS[ck]?.messages[+idx]; };
+
+  function messageHtml(m, i, list, chat) {
+    if (m.day) return `<div class="day">${m.day}</div>`;
+    if (m.system) return `<div class="system">${esc(m.system)}</div>`;
+    const prev = list[i - 1], next = list[i + 1];
+    const first = !prev || prev.from !== m.from || prev.day || prev.system;
+    const last = !next || next.from !== m.from || next.day || next.system;
+    const dir = m.from === "me" ? "out" : "in";
+    const id = `${S.chat}-${i}`;
+    const showSender = chat.kind === "group" && dir === "in" && first;
+    const sender = showSender ? `<span class="sender" style="color:${NAME_INK[m.from]}">${P[m.from].name}</span>` : "";
+    let body = "", media = false, kind = "";
+
+    if (m.photos) {
+      media = true;
+      const noCap = !m.caption;
+      if (m.photos.length === 1) body = `<div class="photo-wrap">${photo(m.photos[0])}${noCap ? meta(m) : ""}</div>`;
+      else {
+        const shown = m.photos.slice(0, 4), extra = m.photos.length - 4;
+        body = `<div class="photo-wrap"><div class="album${noCap ? " no-cap" : ""}">${shown.map((c, k) =>
+          k === 3 && extra > 0 ? photo(c, "").replace("</button>", `<span class="more">+${extra}</span></button>`) : photo(c, "")).join("")}</div>${noCap ? meta(m) : ""}</div>`;
+      }
+      if (m.caption) body += `<div class="caption">${esc(m.caption)}${meta(m)}</div>`;
+    } else if (m.poll || m.place || m.event || m.secret) {
+      const o = { id, meta: meta(m), avatar, mine: m.from === "me" };
+      kind = IsolMsg.bubbleClass(m);
+      body = m.poll ? IsolMsg.poll(m.poll, o) : m.place ? IsolMsg.place(m.place, o) : m.event ? IsolMsg.event(m.event, o) : IsolMsg.secret(m.secret, o);
+    } else if (m.voice) {
+      body = voiceHtml(id, m);
+    } else {
+      body = (m.reply ? `<span class="reply"><b>${m.reply.who}</b>${esc(m.reply.text)}</span>` : "") + `${esc(m.text)}${meta(m)}`;
+    }
+    const av = dir === "in" && chat.kind === "group" ? `<span class="av-slot">${avatar(m.from, "sm")}</span>` : "";
+    return `<div class="msg ${dir}${first ? " first" : ""}${last ? " last" : ""}${m.react ? " has-react" : ""}">${av}
+      <div class="bubble${media ? " media" : ""}${kind}">${sender}${body}${m.react ? `<span class="react">${m.react}</span>` : ""}</div></div>`;
+  }
+
+  // ── Composer ───────────────────────────────────────────────
+  const MENU = [["photos", "Photo", "image", C.verdigris, ""], ["poll", "Poll", "poll", C.olive, "Ask the chat"], ["place", "Location", "pin", C.madder, "Pin or live"], ["event", "Event", "calendar", C.sepia, "A date to keep"], ["secret", "Future secret", "hourglass", "#3b2f35", "Opens at a time you pick"]];
+  const SECRET_WHEN = () => { const n = new Date(), at = (d, h, m) => { const x = new Date(n); x.setDate(x.getDate() + d); x.setHours(h, m, 0, 0); return x; };
+    return [["hour", "In an hour", new Date(Date.now() + 3600e3)], ["tomorrow", "Tomorrow 09:00", at(1, 9, 0)], ["week", "In a week", at(7, n.getHours(), n.getMinutes())], ["newyear", "New Year", new Date(n.getFullYear() + 1, 0, 1, 0, 0)], ["birthday", "12 Mar 2027", new Date(2027, 2, 12, 9, 0)]]; };
+  if (!S.secretWhen) S.secretWhen = "newyear";
+
+  function sheetHtml(kind) {
+    const close = `<button class="icon-btn" data-act="sheet-close" aria-label="Close">${icon("x")}</button>`;
+    if (kind === "poll") return `<div class="csheet"><header><h4>${icon("poll")}New poll</h4>${close}</header>
+      <input type="text" id="poll-q" value="Where shall we eat tonight?" aria-label="Question">
+      ${["The harbour inn", "Fish on the beach", "Cook on the ship"].map((o, k) => `<div class="opt-row"><span>${k + 1}</span><input type="text" class="poll-o" value="${o}" aria-label="Option ${k + 1}"></div>`).join("")}
+      <button class="addopt">+ Add option</button>
+      <label class="row" style="padding:2px 0;min-height:0">${icon("check2")}<span class="txt">Allow several answers</span><input type="checkbox" class="switch" id="poll-multi"></label>
+      <div class="send-row"><button class="btn btn-accent" data-act="send-poll">${icon("send")}Send poll</button></div></div>`;
+    if (kind === "event") return `<div class="csheet"><header><h4>${icon("calendar")}New event</h4>${close}</header>
+      <input type="text" id="ev-title" value="Supper at the harbour inn" aria-label="Title">
+      <div class="two"><input type="text" value="Fri 21 Nov" aria-label="Date"><input type="text" value="19:30 – 22:00" aria-label="Time"></div>
+      <input type="text" id="ev-place" value="The Harbour Inn, Tintagel" aria-label="Place">
+      <div class="send-row"><button class="btn btn-accent" data-act="send-event">${icon("send")}Send event</button></div></div>`;
+    if (kind === "place") return `<div class="csheet"><header><h4>${icon("pin")}Share location</h4>${close}</header>
+      <div class="map">${mapSvg("pin")}</div>
+      <button class="btn btn-primary" data-act="send-place">${icon("pin")}Send this location</button>
+      <span class="lbl2">Or share it live for</span>
+      <div class="live-opts"><button data-act="send-live" data-v="15 min">15 min</button><button data-act="send-live" data-v="1 h">1 hour</button><button data-act="send-live" data-v="8 h">8 hours</button></div>
+      <p class="note">Live location stops by itself when the time runs out.</p></div>`;
+    if (kind === "secret") {
+      const opts = SECRET_WHEN(), pick = opts.find(o => o[0] === S.secretWhen) || opts[3];
+      return `<div class="csheet secret-sheet"><header><h4>${icon("hourglass")}Future secret</h4>${close}</header>
+        <textarea id="secret-text" placeholder="Write something they can only read later…" aria-label="Secret">Look under the third stone of the chapel wall.</textarea>
+        <span class="lbl2">Opens</span>
+        <div class="chips">${opts.map(([k, l]) => `<button data-act="secret-when" data-v="${k}" aria-pressed="${k === pick[0]}">${l}</button>`).join("")}</div>
+        <div class="seal-line"><b>Opens ${fmtDate(pick[2])}</b><code>drand quicknet · round ${fmtRound(drandRound(pick[2]))}</code></div>
+        <p class="note">Sealed with a drand timelock. Once it's sent, nobody can read it before then: not them, not you, not Isol.</p>
+        <div class="send-row"><button class="btn btn-seal" data-act="send-secret">${icon("hourglass")}Seal &amp; send</button></div></div>`;
+    }
+    return "";
+  }
+
+  function composerHtml() {
+    if (["poll", "event", "place", "secret"].includes(S.composer)) return sheetHtml(S.composer);
+    if (S.composer === "recording") {
+      const bars = Array.from({ length: 48 }, (_, i) => `<i style="height:${Math.round(20 + 80 * Math.abs(Math.sin((i + S.rec * 3) * 0.7) * Math.cos(i * 0.31)))}%"></i>`).join("");
+      return `<div class="bar">
+        <button class="icon-btn" data-act="rec-cancel" aria-label="Discard recording">${icon("trash")}</button>
+        <div class="recorder" aria-live="polite"><span class="rec"></span><span class="clock" id="rec-clock">${mmss(S.rec)}</span><span class="live" id="rec-live">${bars}</span></div>
+        <button class="round send" data-act="rec-send" aria-label="Send voice note">${icon("send")}</button>
+      </div>`;
+    }
+    const photos = S.composer === "photos";
+    const hasText = S.draft.trim().length > 0 || photos;
+    return `${photos ? `<div class="tray">${S.photosDraft.map((c, k) => `<div class="thumb" style="background-size:${CROPS[c][0]};background-position:${CROPS[c][1]}"><button data-act="unattach" data-k="${k}" aria-label="Remove photo">${icon("x")}</button></div>`).join("")}<button class="add" data-act="attach" aria-label="Add photo">${icon("plus")}</button></div>` : ""}
+      <div class="bar">
+        ${S.composer === "menu" ? `<div class="attach-menu" role="menu">${MENU.map(([k, l, ic, c, sub]) => `<button role="menuitem" data-act="kind" data-k="${k}"><span class="mi" style="background:${c}">${icon(ic)}</span><span>${l}${sub ? `<small>${sub}</small>` : ""}</span></button>`).join("")}</div>` : ""}
+        <button class="round plus${S.composer === "menu" ? " on" : ""}" data-act="menu" aria-label="Add" aria-expanded="${S.composer === "menu"}">${icon("plus")}</button>
+        <div class="field"><textarea id="draft" rows="1" placeholder="${photos ? "Add a caption" : "Message"}" aria-label="Message">${esc(S.draft)}</textarea></div>
+        ${hasText ? `<button class="round send" data-act="send" aria-label="Send">${icon("send")}</button>`
+                  : `<button class="round mic" data-act="record" aria-label="Record voice note">${icon("mic")}</button>`}
+      </div>`;
+  }
+
+  // ── Conversation pane ──────────────────────────────────────
+  function convoHtml(chat) {
+    const st = chat.settings;
+    let title, sub, av;
+    if (chat.kind === "direct") {
+      const p = P[chat.with];
+      av = avatar(chat.with);
+      title = `${p.name}${st.verified ? icon("verified", "verified") : ""}${st.mute ? icon("bell-off", "muted") : ""}`;
+      sub = `<span class="online">online</span> · <code>${short(p.key)}</code>`;
+    } else {
+      av = `<span class="av group" style="--av:${chat.color}">${initials(chat.name)}</span>`;
+      title = `${chat.name}${st.mute ? icon("bell-off", "muted") : ""}`;
+      sub = chat.members.map(m => m === "me" ? "You" : P[m].name).join(", ");
+    }
+    const typer = chat.kind === "direct" ? P[chat.with].name : "Brangäne";
+    return `<section class="convo" aria-label="Conversation">
+      <header class="convo-head">
+        <button class="icon-btn back" aria-label="Back">${icon("back")}</button>
+        <button class="who" data-act="info" aria-label="Open chat settings">${av}<div><div class="name">${title}</div><small>${sub}</small></div></button>
+        <button class="icon-btn" aria-label="Search in chat">${icon("search")}</button>
+        <button class="icon-btn" data-act="info" aria-label="Chat settings">${icon("info")}</button>
+      </header>
+      <div class="messages scroll" id="messages">
+        ${chat.messages.map((m, i, l) => messageHtml(m, i, l, chat)).join("")}
+        ${S.theyType ? `<div class="typing">${chat.kind === "group" ? avatar("brangaene", "sm") : ""}<span class="dots"><i></i><i></i><i></i></span>${chat.kind === "group" ? `${typer} is typing` : ""}</div>` : ""}
+      </div>
+      <footer class="composer" id="composer">${composerHtml()}</footer>
+    </section>`;
+  }
+
+  // ── Info pane ──────────────────────────────────────────────
+  const sw = (key, label, hint, ic) => `<label class="row">${icon(ic)}<span class="txt">${label}${hint ? `<small>${hint}</small>` : ""}</span><input type="checkbox" class="switch" data-set="${key}" ${CHATS[S.chat].settings[key] ? "checked" : ""}></label>`;
+  const seg = (key, opts) => `<div class="seg" role="group">${opts.map(([v, l]) => `<button data-seg="${key}" data-v="${v}" aria-pressed="${CHATS[S.chat].settings[key] === v}">${l}</button>`).join("")}</div>`;
+  const linkRow = (ic, label, hint, attrs = "", cls = "") => `<div class="row link ${cls}" ${attrs}>${icon(ic)}<span class="txt">${label}${hint ? `<small>${hint}</small>` : ""}</span>${cls ? "" : icon("chev", "chev")}</div>`;
+  const mediaGrid = chat => {
+    const crops = chat.kind === "direct" ? ["goblet", "face", "chain", "flowers"] : ["curtain", "flowers", "chain", "gown"];
+    return `<div class="media-grid">${crops.map(c => photo(c, "")).join("")}</div>`;
+  };
+
+  function infoHtml(chat) {
+    const st = chat.settings;
+    let hero, body;
+    if (chat.kind === "direct") {
+      const p = P[chat.with];
+      hero = `<div class="hero">${avatar(chat.with, "lg")}
+        <div class="title">${p.name}${st.verified ? icon("verified", "verified") : ""}<button class="icon-btn edit" aria-label="Rename">${icon("pencil")}</button></div>
+        <div class="sub">Only you see this name.</div>
+        <code>${short(p.key)}</code>
+        <div class="quick">
+          <button>${icon("search")}Search</button>
+          <button data-set-toggle="mute">${icon(st.mute ? "bell-off" : "bell")}${st.mute ? "Unmute" : "Mute"}</button>
+          <button data-act="qr">${icon("qr")}Their QR</button>
+        </div></div>`;
+      body = `
+        <div class="sec"><h4>Photos &amp; voice notes <button>See all</button></h4>${mediaGrid(chat)}
+          ${linkRow("mic", "Voice notes", "4 · 2:41 in total")}</div>
+        <div class="sec"><h4>Safety</h4>
+          <div class="keybox"><div class="hex" aria-label="${p.name}'s key">${p.key.match(/.{4}/g).map(g => `<span>${g}</span>`).join("")}</div>
+            <p>Compare this key with ${p.name}'s screen, or scan their QR in person.</p></div>
+          ${sw("verified", "Verified", st.verified ? "You checked this key in person" : "Mark it once you've compared keys", "shield")}
+          <div class="row">${icon("lock")}<span class="txt">End-to-end encrypted<small>Messages go straight to ${p.name}'s devices</small></span></div></div>
+        <div class="sec"><h4>Notifications &amp; media</h4>
+          ${sw("mute", "Mute", "", "bell-off")}
+          ${sw("autoPhotos", "Download photos", "Automatically, when they arrive", "image")}
+          ${sw("autoVoice", "Download voice notes", "", "download")}</div>
+        <div class="sec"><h4>Privacy</h4>
+          ${sw("receipts", "Read receipts", `Let ${p.name} see when you've read`, "check2")}
+          ${sw("typing", "Typing indicator", "", "eye")}</div>
+        <div class="sec">${linkRow("trash", "Clear chat", "", "", "danger")}${linkRow("block", `Block ${p.name}`, "", "", "danger")}</div>`;
+    } else {
+      hero = `<div class="hero"><span class="av group lg" style="--av:${chat.color}">${initials(chat.name)}</span>
+        <div class="title">${chat.name}<button class="icon-btn edit" aria-label="Rename group">${icon("pencil")}</button></div>
+        <div class="sub">${esc(chat.description)}</div>
+        <div class="quick">
+          <button>${icon("user-plus")}Add</button>
+          <button data-set-toggle="mute">${icon(st.mute ? "bell-off" : "bell")}${st.mute ? "Unmute" : "Mute"}</button>
+          <button data-act="qr">${icon("qr")}Invite QR</button>
+        </div></div>`;
+      const members = chat.members.map(m => `<div class="row">${avatar(m, "sm")}<span class="txt">${m === "me" ? "You" : P[m].name}<code style="display:block">${short(P[m].key)}</code></span>${chat.admins.includes(m) ? `<span class="role">Admin</span>` : ""}</div>`).join("");
+      body = `
+        <div class="sec"><h4>${chat.members.length} members <button>Add</button></h4>
+          ${linkRow("link", "Invite with a link", "Anyone with the link can ask to join")}${members}</div>
+        <div class="sec"><h4>Photos &amp; voice notes <button>See all</button></h4>${mediaGrid(chat)}</div>
+        <div class="sec"><h4>Who can send messages</h4>${seg("whoSends", [["all", "Everyone"], ["admins", "Admins"]])}
+          <h4 style="margin-top:8px">Who can edit name &amp; photo</h4>${seg("whoEdits", [["all", "Everyone"], ["admins", "Admins"]])}</div>
+        <div class="sec"><h4>Notifications &amp; media</h4>
+          ${sw("mute", "Mute", "Still notified when someone mentions you", "bell-off")}
+          ${sw("autoPhotos", "Download photos", "", "image")}
+          ${sw("autoVoice", "Download voice notes", "", "download")}</div>
+        <div class="sec">${linkRow("trash", "Clear chat", "", "", "danger")}${linkRow("leave", "Leave group", "", "", "danger")}</div>`;
+    }
+    return `<aside class="info" aria-label="Chat settings">
+      <header class="info-head"><button class="icon-btn back" data-act="close-info" aria-label="Back">${icon("back")}</button>
+        <h3>${chat.kind === "direct" ? "Chat settings" : "Group settings"}</h3>
+        <button class="icon-btn close" data-act="close-info" aria-label="Close">${icon("x")}</button></header>
+      <div class="info-body scroll">${hero}${body}</div>
+    </aside>`;
+  }
+
+  // ── Render ─────────────────────────────────────────────────
+  function render({ keepScroll = false } = {}) {
+    const chat = CHATS[S.chat];
+    const list = $("messages"), scroll = keepScroll && list ? list.scrollTop : null;
+    const infoScroll = document.querySelector(".info-body")?.scrollTop;
+    app.classList.toggle("narrow", stage.dataset.width === "phone" || app.clientWidth < 720);
+    app.classList.toggle("info-open", S.info);
+    app.innerHTML = convoHtml(chat) + (S.info ? infoHtml(chat) : "") +
+      `<div class="overlay" id="overlay"></div>`;
+    const m = $("messages");
+    m.style.scrollBehavior = "auto";
+    m.scrollTop = scroll ?? m.scrollHeight;
+    m.style.scrollBehavior = "";
+    if (infoScroll != null && document.querySelector(".info-body")) document.querySelector(".info-body").scrollTop = infoScroll;
+    const d = $("draft"); if (d) autosize(d);
+    IsolMsg.settle(chat.messages);
+  }
+  function autosize(t) { t.style.height = "44px"; t.style.height = Math.min(120, t.scrollHeight) + "px"; }
+
+  // Voice playback (simulated): update only the playing bubble.
+  function paintVoice(id) {
+    const [chatKey, idx] = id.split("-"), m = CHATS[chatKey].messages[+idx], a = audio[id];
+    const el = app.querySelector(`[data-voice="${id}"]`); if (!el) return;
+    const bars = el.querySelectorAll(".wave i"), on = Math.round((a.pos / m.voice.dur) * bars.length);
+    bars.forEach((b, k) => b.classList.toggle("on", k < on));
+    el.querySelector(".time").textContent = `${a.pos > 0 ? mmss(a.pos) + " / " : ""}${mmss(m.voice.dur)}`;
+    el.querySelector(".play").innerHTML = icon(S.playing === id ? "pause" : "play");
+  }
+  function play(id) {
+    const prev = S.playing;
+    clearInterval(tick);
+    if (prev === id) { S.playing = null; paintVoice(id); return; }
+    S.playing = id; if (prev) paintVoice(prev);
+    const [chatKey, idx] = id.split("-"), m = CHATS[chatKey].messages[+idx], a = audio[id];
+    if (a.pos >= m.voice.dur) a.pos = 0;
+    paintVoice(id);
+    tick = setInterval(() => {
+      a.pos = Math.min(m.voice.dur, a.pos + 0.1 * a.speed);
+      if (a.pos >= m.voice.dur) { clearInterval(tick); S.playing = null; a.pos = 0; }
+      paintVoice(id);
+    }, 100);
+  }
+
+  function startRecording() {
+    S.composer = "recording"; S.rec = 0; press("comp-ctl", "recording");
+    clearInterval(recTick);
+    recTick = setInterval(() => {
+      S.rec += 0.25;
+      const clock = $("rec-clock"), live = $("rec-live");
+      if (!clock) return clearInterval(recTick);
+      clock.textContent = mmss(S.rec);
+      live.querySelectorAll("i").forEach((b, i) => b.style.height = `${Math.round(20 + 80 * Math.abs(Math.sin((i + S.rec * 3) * 0.7) * Math.cos(i * 0.31 + S.rec)))}%`);
+    }, 250);
+    render({ keepScroll: true });
+  }
+
+  const now = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+  function push(msg) {
+    const list = CHATS[S.chat].messages; list.push(msg);
+    render();
+    const i = list.length - 1;
+    setTimeout(() => { if (list[i].status === "sent") { list[i].status = "delivered"; render({ keepScroll: true }); } }, 900);
+  }
+
+  // ── Events ─────────────────────────────────────────────────
+  app.addEventListener("click", e => {
+    if (IsolMsg.handle(e.target, msgById)) return render({ keepScroll: true });
+    const b = e.target.closest("[data-act],[data-set-toggle],[data-seg]"); if (!b) return;
+    const chat = CHATS[S.chat];
+    if (b.dataset.setToggle) { chat.settings[b.dataset.setToggle] = !chat.settings[b.dataset.setToggle]; return render({ keepScroll: true }); }
+    if (b.dataset.seg) { chat.settings[b.dataset.seg] = b.dataset.v; return render({ keepScroll: true }); }
+    const act = b.dataset.act;
+    if (act === "info") { S.info = true; press("info-ctl", "open"); render({ keepScroll: true }); }
+    else if (act === "close-info") { S.info = false; press("info-ctl", "closed"); render({ keepScroll: true }); }
+    else if (act === "play") play(b.closest("[data-voice]").dataset.voice);
+    else if (act === "seek") {
+      const id = b.closest("[data-voice]").dataset.voice, [ck, idx] = id.split("-"), m = CHATS[ck].messages[+idx];
+      const r = b.getBoundingClientRect(); audio[id].pos = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * m.voice.dur; paintVoice(id);
+    }
+    else if (act === "speed") { const id = b.closest("[data-voice]").dataset.voice, a = audio[id]; a.speed = a.speed === 1 ? 1.5 : a.speed === 1.5 ? 2 : 1; b.textContent = `${a.speed}×`; }
+    else if (act === "view") {
+      const c = CROPS[b.dataset.crop], o = $("overlay");
+      o.innerHTML = `<div class="big" style="background-size:${c[0]};background-position:${c[1]}"></div>`; o.classList.add("open");
+      o.onclick = () => o.classList.remove("open");
+    }
+    else if (act === "qr") {
+      const o = $("overlay"), isDirect = chat.kind === "direct";
+      const text = isDirect ? `isol:pub:${P[chat.with].key}` : `isol:group:${chat.name.toLowerCase()}:${P.isolde.key.slice(0, 32)}`;
+      o.innerHTML = `<div class="qrbox">${isolQr(text)}<b>${isDirect ? `${P[chat.with].name}'s key` : `Join “${chat.name}”`}</b><small>${isDirect ? "Scan this on their device to verify it's really them." : "Anyone who scans this can ask to join. Admins approve."}</small></div>`;
+      o.classList.add("open"); o.onclick = ev => { if (!ev.target.closest(".qrbox")) o.classList.remove("open"); };
+    }
+    else if (act === "menu") { S.composer = S.composer === "menu" ? "idle" : "menu"; press("comp-ctl", S.composer); render({ keepScroll: true }); }
+    else if (act === "kind") {
+      const k = b.dataset.k;
+      if (k === "photos") { S.composer = "photos"; S.photosDraft = ["flowers", "goblet"]; } else S.composer = k;
+      press("comp-ctl", S.composer); render({ keepScroll: true });
+    }
+    else if (act === "sheet-close") { S.composer = "idle"; press("comp-ctl", "idle"); render({ keepScroll: true }); }
+    else if (act === "secret-when") { S.secretWhen = b.dataset.v; const t = $("secret-text").value; render({ keepScroll: true }); $("secret-text").value = t; }
+    else if (act === "send-poll") {
+      const q = $("poll-q").value.trim() || "Poll", opts = [...app.querySelectorAll(".poll-o")].map(i => i.value.trim()).filter(Boolean);
+      S.composer = "idle"; press("comp-ctl", "idle");
+      push({ from: "me", t: now(), poll: { q, multi: $("poll-multi").checked, closes: "in 1 day", options: opts.map(label => ({ label, voters: [] })) }, status: "sent" });
+    }
+    else if (act === "send-event") {
+      const title = $("ev-title").value.trim() || "Event", place = $("ev-place").value.trim();
+      S.composer = "idle"; press("comp-ctl", "idle");
+      push({ from: "me", t: now(), event: { title, start: dayAt(4, 19, 30), end: dayAt(4, 22), place, going: ["me"], maybe: [], no: [] }, status: "sent" });
+    }
+    else if (act === "send-place" || act === "send-live") {
+      const live = act === "send-live"; S.composer = "idle"; press("comp-ctl", "idle");
+      const mins = { "15 min": 15, "1 h": 60, "8 h": 480 }[b.dataset.v];
+      push({ from: "me", t: now(), place: live ? { name: "Your location", addr: "Fore St, Tintagel", coords: "50.6627° N, 4.7519° W", live: { total: mins, left: mins } } : { name: "Tintagel", addr: "Fore St, Tintagel", coords: "50.6627° N, 4.7519° W" }, status: "sent" });
+    }
+    else if (act === "send-secret") {
+      const text = $("secret-text").value.trim(); if (!text) return;
+      const pick = SECRET_WHEN().find(o => o[0] === S.secretWhen);
+      S.composer = "idle"; press("comp-ctl", "idle");
+      push({ from: "me", t: now(), secret: { when: pick[2], sealed: "today", text }, status: "sent" });
+    }
+    else if (act === "attach") { S.composer = "photos"; if (S.photosDraft.length < 2) S.photosDraft.push("chain"); press("comp-ctl", "photos"); render({ keepScroll: true }); }
+    else if (act === "unattach") { S.photosDraft.splice(+b.dataset.k, 1); if (!S.photosDraft.length) { S.composer = "idle"; S.photosDraft = ["flowers", "goblet"]; press("comp-ctl", "idle"); } render({ keepScroll: true }); }
+    else if (act === "record") startRecording();
+    else if (act === "rec-cancel") { clearInterval(recTick); S.composer = "idle"; press("comp-ctl", "idle"); render({ keepScroll: true }); }
+    else if (act === "rec-send") {
+      clearInterval(recTick); const dur = Math.max(2, Math.round(S.rec)); S.composer = "idle"; press("comp-ctl", "idle");
+      push({ from: "me", t: now(), voice: { dur, seed: dur + 5 }, status: "sent" });
+    }
+    else if (act === "send") {
+      const text = S.draft.trim();
+      if (S.composer === "photos") {
+        push({ from: "me", t: now(), photos: [...S.photosDraft], caption: text || undefined, status: "sent" });
+        S.photosDraft = ["flowers", "goblet"];
+      } else if (text) push({ from: "me", t: now(), text, status: "sent" });
+      S.draft = ""; S.composer = "idle"; press("comp-ctl", "idle"); render();
+    }
+  });
+  let scrollTimer;
+  app.addEventListener("scroll", e => {
+    const el = e.target; if (!el.classList?.contains("scroll")) return;
+    el.classList.add("scrolling"); clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => el.classList.remove("scrolling"), 700);
+  }, true);
+  app.addEventListener("change", e => {
+    const k = e.target.dataset.set; if (!k) return;
+    CHATS[S.chat].settings[k] = e.target.checked; render({ keepScroll: true });
+  });
+  app.addEventListener("input", e => {
+    if (e.target.id !== "draft") return;
+    const had = S.draft.trim().length > 0 || S.composer === "photos";
+    S.draft = e.target.value; autosize(e.target);
+    const has = S.draft.trim().length > 0 || S.composer === "photos";
+    if (had !== has) { const pos = e.target.selectionStart; render({ keepScroll: true }); const d = $("draft"); d.focus(); d.setSelectionRange(pos, pos); }
+  });
+  app.addEventListener("keydown", e => {
+    if (e.target.id === "draft" && e.key === "Enter" && !e.shiftKey) { e.preventDefault(); app.querySelector('[data-act="send"]')?.click(); }
+  });
+
+  IsolMsg.tick(app, () => render({ keepScroll: true }));
+
+  // ── POC toolbar ────────────────────────────────────────────
+  function press(ctl, v) { $(ctl).querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === v)); }
+  function wire(ctl, fn) { $(ctl).addEventListener("click", e => { const v = e.target.closest("button")?.dataset.v; if (!v) return; press(ctl, v); fn(v); }); }
+  wire("chat-ctl", v => { S.chat = v; clearInterval(tick); S.playing = null; render(); });
+  wire("info-ctl", v => { S.info = v === "open"; render({ keepScroll: true }); });
+  wire("comp-ctl", v => {
+    clearInterval(recTick);
+    if (v === "recording") return startRecording();
+    S.composer = v === "typing" ? "idle" : v;
+    S.draft = v === "typing" ? "I'll bring the map and the" : v === "photos" ? "" : S.draft;
+    render({ keepScroll: true });
+    if (v === "typing") { const d = $("draft"); d.focus(); d.setSelectionRange(d.value.length, d.value.length); }
+  });
+  wire("width-ctl", v => { stage.dataset.width = v; render(); });
+  $("typing-ctl").onchange = e => { S.theyType = e.target.checked; render(); };
+  new ResizeObserver(() => {
+    const narrow = stage.dataset.width === "phone" || app.clientWidth < 720;
+    if (narrow !== app.classList.contains("narrow")) render({ keepScroll: true });
+  }).observe(app);
+
+  // Deep links for review: ?chat=group&info=1&composer=recording&width=phone&typing=1
+  const q = new URLSearchParams(location.search);
+  if (q.get("chat") === "group") { S.chat = "group"; press("chat-ctl", "group"); }
+  if (q.get("info") === "1") { S.info = true; press("info-ctl", "open"); }
+  if (q.get("width") === "phone") { stage.dataset.width = "phone"; press("width-ctl", "phone"); }
+  if (q.get("typing") === "1") { S.theyType = true; $("typing-ctl").checked = true; }
+  render();
+  const comp = q.get("composer");
+  if (comp) $("comp-ctl").querySelector(`[data-v="${comp}"]`)?.click();
+</script>
+</body>
+</html>

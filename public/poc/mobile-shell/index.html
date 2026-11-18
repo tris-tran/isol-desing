@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mobile Shell POC</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/components.css">
+<link rel="stylesheet" href="../shared/identity.css">
+<style>
+  .frame { max-width: 1180px; }
+  .layout { display: grid; grid-template-columns: 384px minmax(0, 1fr); gap: 40px; align-items: start; padding: 32px; background: var(--color-3); border: var(--line) solid var(--rule-soft); }
+  @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); justify-items: center; } }
+
+  /* Screen map beside the phone */
+  .map h3 { margin: 0 0 4px; font-size: 17px; font-weight: 500; }
+  .map p { margin: 0 0 14px; font-size: 14px; color: var(--text-muted); }
+  .map .grp { margin-bottom: 18px; }
+  .map .grp b { display: block; font-family: var(--font-display); font-size: 10.5px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+  .map .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .map .chips button { height: 30px; padding: 0 12px; border: 1px solid var(--rule); border-radius: 999px; background: var(--color-1); cursor: pointer; font: inherit; font-size: 13.5px; }
+  .map .chips button[aria-pressed=true] { background: var(--color-15); color: var(--color-1); border-color: var(--color-15); }
+  .gestures { display: grid; gap: 8px; font-size: 14px; color: var(--text-muted); }
+  .gestures div { display: grid; grid-template-columns: 110px 1fr; gap: 10px; }
+  .gestures span:first-child { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--text); padding-top: 2px; }
+
+  /* ───────────── Phone ───────────── */
+  .phone { width: 384px; height: 800px; border-radius: 48px; padding: 12px; background: var(--color-15); box-shadow: 0 20px 44px rgba(74,59,66,.32); }
+  .screen { position: relative; width: 100%; height: 100%; border-radius: 37px; overflow: hidden; background: var(--color-1); }
+  .statusbar { position: absolute; top: 0; left: 0; right: 0; z-index: 30; display: flex; justify-content: space-between; padding: 13px 26px 0; font-family: var(--font-mono); font-size: 13px; color: var(--text); pointer-events: none; }
+  .statusbar.light { color: var(--color-1); }
+
+  .view { position: absolute; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: var(--color-1); padding-top: 36px; }
+  .view.push-in { animation: pushIn .28s cubic-bezier(.2,.8,.2,1); }
+  .view.pop-in { animation: popIn .28s cubic-bezier(.2,.8,.2,1); }
+  .view.fade-in { animation: fadeIn .18s ease; }
+  @keyframes pushIn { from { transform: translateX(100%); } }
+  @keyframes popIn { from { transform: translateX(-30%); opacity: .6; } }
+  @keyframes fadeIn { from { opacity: .4; } }
+
+  .icon-btn { width: 40px; height: 40px; display: inline-grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--text); cursor: pointer; flex: none; }
+  .icon-btn:hover { background: var(--color-3); }
+  .icon-btn svg.i { width: 22px; height: 22px; }
+
+  /* Top bars */
+  .topbar { display: flex; align-items: center; gap: 4px; padding: 8px 10px 10px 18px; }
+  .topbar h1 { flex: 1; margin: 0; font-size: 28px; font-weight: 500; }
+  .cam { width: 44px; height: 44px; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--color-15); color: var(--color-1); cursor: pointer; margin-left: 4px; box-shadow: 0 3px 10px rgba(74,59,66,.25); }
+  .cam svg.i { width: 22px; height: 22px; }
+  .cam:active { transform: scale(.95); }
+  .subbar { display: flex; align-items: center; gap: 4px; padding: 4px 8px 8px 4px; border-bottom: 1px solid var(--rule-soft); min-width: 0; }
+  .subbar .grow { flex: 1; min-width: 0; }
+  .subbar .who { flex: 1; min-width: 0; border: 0; background: none; padding: 4px 6px; border-radius: 10px; cursor: pointer; text-align: left; font: inherit; color: inherit; }
+  .subbar .who:hover { background: var(--color-3); }
+  .subbar h2 { margin: 0; font-size: 18px; font-weight: 500; }
+
+  .search { margin: 0 14px 8px; height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-radius: 999px; background: var(--color-3); color: var(--color-5); font-size: 15px; }
+  .search svg.i { width: 18px; height: 18px; }
+  .body { overflow-y: auto; scrollbar-width: none; min-height: 0; }
+  .body::-webkit-scrollbar { display: none; }
+
+  /* Bottom navigation */
+  .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); border-top: 1px solid var(--rule-soft); background: var(--color-1); padding: 6px 4px 18px; }
+  .tab { position: relative; display: grid; justify-items: center; gap: 3px; padding: 6px 0 2px; border: 0; background: none; cursor: pointer; color: var(--text-muted); font-family: var(--font-display); font-size: 11px; font-weight: 600; letter-spacing: .02em; }
+  .tab svg.i { width: 23px; height: 23px; }
+  .tab .pill { width: 54px; height: 30px; border-radius: 999px; display: grid; place-items: center; transition: background .2s; }
+  .tab[aria-current=true] { color: var(--text); }
+  .tab[aria-current=true] .pill { background: var(--color-3); }
+  .tab .count { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--color-10); color: var(--color-1); font-size: 10.5px; font-weight: 700; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--color-1); }
+  .tab .dotnew { position: absolute; top: 6px; left: calc(50% + 10px); width: 8px; height: 8px; border-radius: 50%; background: var(--color-14); box-shadow: 0 0 0 2px var(--color-1); }
+  .tab .id-av { --s: 26px; }
+
+  /* Chat list */
+  .chatrow { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 1px 12px; align-items: center; padding: 10px 16px; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: background .15s; }
+  .chatrow:hover { background: rgba(217,196,165,.35); }
+  .chatrow .id-av, .chatrow .gav { --s: 52px; grid-row: span 2; }
+  .gav { width: var(--s); height: var(--s); border-radius: 30%; display: grid; place-items: center; background: var(--color-11); color: var(--color-1); font-family: var(--font-display); font-size: 20px; font-weight: 500; }
+  .chatrow .t1 { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 16.5px; }
+  .chatrow .t1 .id-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chatrow .t1 svg.i { width: 15px; height: 15px; color: var(--text-faint); flex: none; }
+  .chatrow .t2 { grid-column: 2; font-size: 14px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chatrow .t2 b { font-weight: 500; color: var(--text); }
+  .chatrow .end { grid-column: 3; grid-row: 1 / span 2; display: grid; justify-items: end; gap: 5px; }
+  .chatrow .time { font-family: var(--font-mono); font-size: 12px; color: var(--text-faint); }
+  .chatrow.unread .time { color: var(--color-10); }
+  .chatrow .badge { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; background: var(--color-10); color: var(--color-1); font-family: var(--font-display); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+  .chatrow .badge.muted { background: var(--color-7); }
+  .chatrow.request .t2 { color: var(--color-10); }
+  .sechead { padding: 14px 18px 4px; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--text-faint); }
+  .pressing { background: var(--color-3) !important; transform: scale(.985); }
+
+  /* Contacts */
+  .contacts .id-row { padding: 9px 16px; border-radius: 0; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: background .15s, transform .15s; }
+  .contacts .id-row:hover { background: rgba(217,196,165,.35); }
+  .hint-line { margin: 2px 18px 10px; font-size: 12.5px; color: var(--text-faint); display: flex; align-items: center; gap: 6px; }
+  .hint-line svg.i { width: 14px; height: 14px; }
+
+  /* Chat */
+  .thread { padding: 14px 14px 8px; display: flex; flex-direction: column; gap: 4px; }
+  .day { align-self: center; margin: 4px 0 10px; padding: 3px 12px; border-radius: 999px; background: var(--color-3); font-family: var(--font-display); font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); }
+  .b { max-width: 80%; padding: 8px 12px; border-radius: 16px; font-size: 15.5px; line-height: 1.35; }
+  .b.in { align-self: flex-start; background: var(--color-3); border-bottom-left-radius: 5px; }
+  .b.out { align-self: flex-end; background: var(--color-15); color: var(--color-1); border-bottom-right-radius: 5px; }
+  .b .t { float: right; margin: 6px 0 -2px 10px; font-family: var(--font-mono); font-size: 11.5px; opacity: .7; }
+  .composer { display: flex; align-items: center; gap: 6px; padding: 8px 10px 22px; border-top: 1px solid var(--rule-soft); }
+  .composer .field { flex: 1; height: 42px; border-radius: 21px; background: var(--color-3); display: flex; align-items: center; padding: 0 16px; color: var(--color-5); font-size: 15px; }
+  .round { width: 42px; height: 42px; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--color-15); color: var(--color-1); flex: none; }
+  .round svg.i { width: 20px; height: 20px; }
+  .round.plus { background: var(--color-3); color: var(--color-15); }
+
+  /* Info, You, Settings pages */
+  .page { padding: 0 0 24px; }
+  .page .id-card { border: 0; max-width: none; }
+  .page .id-card .who { padding-top: 18px; }
+  .acts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--rule-soft); }
+  .acts button { display: grid; justify-items: center; gap: 5px; padding: 10px 0 8px; border: 1px solid var(--rule-soft); border-radius: 12px; background: none; cursor: pointer; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--text); }
+  .acts svg.i { width: 21px; height: 21px; color: var(--color-15); }
+  .list .li { display: flex; align-items: center; gap: 14px; padding: 13px 18px; border-bottom: 1px solid rgba(199,174,141,.5); cursor: pointer; font-size: 16px; }
+  .list .li:hover { background: rgba(217,196,165,.35); }
+  .list .li > svg.i { width: 22px; height: 22px; color: var(--text-muted); }
+  .list .li .txt { flex: 1; min-width: 0; }
+  .list .li .txt small { display: block; font-size: 13px; color: var(--text-muted); }
+  .list .li .chev { width: 18px; height: 18px; color: var(--text-faint); }
+  .list .li.danger, .list .li.danger > svg.i { color: var(--color-10); }
+
+  /* Boards (just enough to navigate) */
+  .boardtabs { display: flex; gap: 6px; padding: 0 14px 10px; overflow-x: auto; scrollbar-width: none; }
+  .boardtabs span { flex: none; height: 30px; padding: 0 12px; border-radius: 999px; background: var(--color-3); font-size: 13.5px; display: inline-flex; align-items: center; }
+  .boardtabs span.on { background: var(--color-15); color: var(--color-1); }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 12px 16px; }
+  .tile { border-radius: 12px; overflow: hidden; border: 1px solid var(--rule-soft); }
+  .tile .img { aspect-ratio: 1; background-image: var(--isolde); background-repeat: no-repeat; }
+  .tile .tt { padding: 7px 9px 9px; font-size: 13.5px; font-weight: 500; line-height: 1.25; }
+
+  /* Bottom sheets */
+  .shade { position: absolute; inset: 0; z-index: 20; background: rgba(42,34,38,.45); animation: fadeIn .2s ease; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--color-1); border-radius: 24px 24px 0 0; padding: 8px 0 24px; animation: up .28s cubic-bezier(.2,.8,.2,1); max-height: 86%; overflow-y: auto; scrollbar-width: none; }
+  @keyframes up { from { transform: translateY(100%); } }
+  .sheet .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--color-4); margin: 4px auto 10px; }
+  .sheet .shead { padding: 0 18px 12px; border-bottom: 1px solid var(--rule-soft); }
+  .sheet .shead .id-row { padding: 4px 0; }
+  .sheet h4 { margin: 4px 18px 4px; font-size: 19px; font-weight: 500; text-align: center; }
+  .sheet .sub { margin: 0 18px 14px; text-align: center; font-size: 14px; color: var(--text-muted); }
+  .sheet .list .li { padding: 12px 20px; }
+  .sheet .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 6px 18px 0; }
+  .sheet .btns .btn { height: 46px; }
+  .sheet .pv { margin: 0 18px 14px; padding: 10px 12px; border-radius: 12px; background: var(--color-3); }
+  .sheet .pv .id-row { padding: 2px 0; }
+  .sheet .facts { margin: 0 18px 14px; display: grid; gap: 6px; font-size: 14px; }
+  .sheet .facts div { display: flex; justify-content: space-between; gap: 10px; } .sheet .facts span { color: var(--text-muted); }
+  .sheet .warn { margin: 0 18px 14px; display: flex; gap: 8px; font-size: 13.5px; }
+  .sheet .warn svg.i { color: var(--color-10); width: 18px; height: 18px; flex: none; }
+
+  /* Scanner */
+  .scanner { position: absolute; inset: 0; z-index: 15; background: #2a2226; display: grid; place-items: center; animation: fadeIn .2s ease; }
+  .scanner .close { position: absolute; top: 44px; left: 14px; color: var(--color-1); }
+  .scanner .close:hover { background: rgba(242,226,196,.12); }
+  .scanner .torch { position: absolute; top: 44px; right: 14px; color: var(--color-1); }
+  .scanner .scene { margin-top: -110px; width: 200px; transform: perspective(600px) rotateX(12deg) rotateZ(-3deg); filter: brightness(.82); border-radius: 4px; box-shadow: 0 0 0 12px rgba(242,226,196,.1); }
+  .scanner .scene svg { display: block; width: 100%; height: auto; }
+  .finder { position: absolute; width: 240px; height: 240px; left: 50%; top: 38%; transform: translate(-50%, -50%); }
+  .finder i { position: absolute; width: 44px; height: 44px; border: 4px solid var(--color-1); }
+  .finder i:nth-child(1) { left: 0; top: 0; border-right: 0; border-bottom: 0; border-top-left-radius: 14px; }
+  .finder i:nth-child(2) { right: 0; top: 0; border-left: 0; border-bottom: 0; border-top-right-radius: 14px; }
+  .finder i:nth-child(3) { left: 0; bottom: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 14px; }
+  .finder i:nth-child(4) { right: 0; bottom: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 14px; }
+  .finder .beam { position: absolute; left: 12px; right: 12px; height: 2px; background: var(--color-2); box-shadow: 0 0 12px var(--color-2); animation: beam 1.8s ease-in-out infinite alternate; }
+  @keyframes beam { from { top: 14px; } to { top: 224px; } }
+  .scanner .hint { position: absolute; left: 16px; right: 16px; bottom: 168px; text-align: center; color: var(--color-1); font-size: 14px; }
+  .scanner .hint b { display: block; font-size: 17px; font-weight: 500; margin-bottom: 2px; }
+  .scanner .demo { position: absolute; left: 0; right: 0; bottom: 36px; display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; padding: 0 12px; }
+  .scanner .demo span { width: 100%; text-align: center; font-family: var(--font-display); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: rgba(242,226,196,.6); }
+  .scanner .demo button { height: 30px; padding: 0 11px; border: 1px solid rgba(242,226,196,.45); border-radius: 999px; background: rgba(242,226,196,.08); color: var(--color-1); cursor: pointer; font: inherit; font-size: 13px; }
+  .scanner .demo button:hover { background: rgba(242,226,196,.18); }
+
+  .toast { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 25; padding: 10px 16px; border-radius: 999px; background: var(--color-15); color: var(--color-1); font-size: 14px; white-space: nowrap; animation: fadeIn .2s ease; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-chats" viewBox="0 0 24 24"><path d="M4 11.5c0-3.6 3.4-6.5 7.5-6.5S19 7.9 19 11.5 15.6 18 11.5 18c-1.2 0-2.3-.2-3.3-.6L4 19l1.1-3.3A6 6 0 0 1 4 11.5z"/></symbol>
+  <symbol id="i-boards" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-contacts" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="2"/><circle cx="12" cy="10" r="2.6"/><path d="M8.2 16.5a4 4 0 0 1 7.6 0M3 8h2M3 12h2M3 16h2"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8V6.5A1.5 1.5 0 0 1 5.5 5H8M16 5h2.5A1.5 1.5 0 0 1 20 6.5V8M20 16v1.5a1.5 1.5 0 0 1-1.5 1.5H16M8 19H5.5A1.5 1.5 0 0 1 4 17.5V16"/><rect x="8.5" y="8.5" width="7" height="7" rx="1"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="18.5" r="1.3" fill="currentColor"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 3h6l-1 5 3 3H7l3-3zM12 11v10"/></symbol>
+  <symbol id="i-bell-off" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 9.5-4.9M18 11v5.5l1.5 1.5H8"/><path d="M10 20.5h4M4 4l16 16"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-seal" viewBox="0 0 24 24"><path d="M12 2.5l2.4 2 3.1-.3.9 3 2.6 1.7-1.2 2.9 1.2 2.9-2.6 1.7-.9 3-3.1-.3-2.4 2-2.4-2-3.1.3-.9-3L2.9 14.5l1.2-2.9-1.2-2.9 2.6-1.7.9-3 3.1.3z"/><path d="M8.5 12.2l2.4 2.4 4.6-4.8"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M15 5l4 4L8.5 19.5H4.5v-4z"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/></symbol>
+  <symbol id="i-check2" viewBox="0 0 24 24"><path d="M2.5 12.5l4.5 4.5L16.5 7.5M12 16.5l.5.5L22 7.5"/></symbol>
+  <symbol id="i-network" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.3 11l7.4-3.8M8.3 13l7.4 3.8"/></symbol>
+  <symbol id="i-store" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="2.5"/><path d="M5 6v12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V6M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z"/><path d="M10 20.5h4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/></symbol>
+  <symbol id="i-laptop" viewBox="0 0 24 24"><rect x="4.5" y="5" width="15" height="10.5" rx="1.5"/><path d="M2.5 19h19"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l2 2"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+  <symbol id="i-torch" viewBox="0 0 24 24"><path d="M8 3h8l-1.5 6h-5zM9.5 9l1 12h3l1-12"/></symbol>
+  <symbol id="i-hand" viewBox="0 0 24 24"><path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11M12 10V4.5a1.5 1.5 0 0 1 3 0V11M15 10.5V6.5a1.5 1.5 0 0 1 3 0v7.5a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-2.7L3.5 13.6a1.5 1.5 0 0 1 2.4-1.8L9 14V8.5a1.5 1.5 0 0 1 0 0"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M16 5.6a3.2 3.2 0 0 1 0 5.8M21 19.5a6 6 0 0 0-3.5-5.4"/></symbol>
+</svg>
+
+<div class="frame">
+  <header class="masthead">
+    <a href="../index.html">← Isol POCs</a>
+    <h1>Mobile shell</h1>
+    <p>Navigation and the frame around everything: chats first, a bottom bar for the places, long-press for options, and one camera for every QR code.</p>
+  </header>
+
+  <section class="sect">
+    <div class="layout">
+      <div class="phone"><div class="screen" id="screen"></div></div>
+      <aside class="map">
+        <h3>Screens</h3>
+        <p>Use the phone like a phone, or jump straight to a screen.</p>
+        <div class="grp"><b>Tabs</b><div class="chips" id="jump-tabs"></div></div>
+        <div class="grp"><b>Pushed screens</b><div class="chips" id="jump-push"></div></div>
+        <div class="grp"><b>Sheets</b><div class="chips" id="jump-sheets"></div></div>
+        <div class="grp"><b>Scanner results</b><div class="chips" id="jump-scan"></div></div>
+        <div class="grp"><b>Gestures</b>
+          <div class="gestures">
+            <div><span>Tap</span><span>A contact opens its chat. A chat header opens the contact info.</span></div>
+            <div><span>Long-press</span><span>A contact or a chat opens its options instead (half a second; right-click on desktop).</span></div>
+            <div><span>Camera</span><span>The round button on Chats. Whatever it scans, the sheet that follows says what it is.</span></div>
+            <div><span>Back</span><span>The arrow, or Escape. The tab bar comes back when you're at a tab's top level.</span></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="sect">
+    <p class="eyebrow">Design notes</p>
+    <h2>How it hangs together</h2>
+    <div class="notes">
+      <div><h3>Chats is home</h3><p>The app opens on Chats. The bar at the bottom holds the five places, Chats · Boards · Contacts · You · Settings, with an unread count on Chats and a Gilt dot when synced boards have new threads.</p></div>
+      <div><h3>Tabs keep the bar, screens push over it</h3><p>Inside a chat, contact info or a settings page, the bottom bar steps aside for the composer or the content. Back returns to the tab exactly where you left it.</p></div>
+      <div><h3>You is a tab</h3><p>Your own identity has a place in the bar, with your Vermilion avatar as the icon: your name, key and QR one tap away, ready to share or to compare.</p></div>
+      <div><h3>Tap goes in, long-press asks</h3><p>A contact opens straight into its chat. Holding it opens a sheet with the contact at the top and the things you'd do to them: message, info, verify, trust, rename, share, remove. Chats get their own sheet: pin, mute, mark read.</p></div>
+      <div><h3>One camera</h3><p>The camera button lives on Chats, the first screen. It reads any Isol QR and the sheet that follows says what it found: a contact to add, a browser to link, a group to join, or an identity to move here.</p></div>
+      <div><h3>Same pieces as everywhere</h3><p>Avatars, names, marks and rows come from the shared identity pieces, so the rules hold here too: quoted names, Gilt seals, and red only for you.</p></div>
+    </div>
+  </section>
+</div>
+
+<script src="../shared/isolde-480.js"></script>
+<script src="../shared/isol-qr.global.js"></script>
+<script src="../shared/identity.js"></script>
+<script>
+  IsolId.ensureSprite();
+  document.documentElement.style.setProperty("--isolde", `url("${window.ISOLDE_JPG}")`);
+  const I = IsolId, $ = id => document.getElementById(id), screen = $("screen");
+  const icon = (id, cls = "") => `<svg class="i ${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+  // ── People and chats ───────────────────────────────────────
+  const ME = { key: "9dd4994d505e788b2cd3289637f834f142ecde46eefe99acfd0bbc969618543c", me: true, theirs: "Tristan" };
+  const P = {
+    isolde:    { key: "e8bcf3823669444d0b49ad45d65088635d9fd8500a75b5f20b59abefa56a144f", pet: "Isolde", theirs: "Isolde", verified: { how: "scan", on: "3 Oct 2026" }, trusted: true, contact: true },
+    brangaene: { key: "17162c921dc4d2518f9a101db33695df1afb56ab82f5ff3e5da6eec3ca5cd917", pet: "Brangäne", theirs: "Brangäne", verified: { how: "compare", on: "12 Oct 2026" }, trusted: true, contact: true },
+    mark:      { key: "4e344c1b0f9d2a154d3a52060d06295ca4c4448f42896ebca9c0203d5f3e6bd1", pet: "King Mark", theirs: "Mark", trusted: true, contact: true },
+    melot:     { key: "a3f1c9d04e5b7a2286fd19ce0b3a4d77e21f68b9c0d54a1e9f73b2c6d8e01f45", pet: "Melot (careful)", theirs: "Melot", verified: { how: "scan", on: "1 Nov 2026" }, contact: true },
+    kurwenal:  { key: "57b0338330f79848dd9c52ed310cc4b542f0ed1a8a892b8e47ce5a99fbff6372", theirs: "Kurwenal", contact: true },
+    inkwell:   { key: "c2109a0e5d3f71b8a6c4e2f09d1b3a5c7e9f0a2b4c6d8e1f3a5b7c9d0e2f4a6b", theirs: "inkwell" },
+  };
+  const CHATS = [
+    { id: "isolde", who: "isolde", last: "Do NOT drink from that.", t: "09:41", unread: 2, pinned: true },
+    { id: "cornwall", group: "Cornwall", last: ["Brangäne", "Who has the key to the chapel?"], t: "09:30", unread: 5, muted: true },
+    { id: "brangaene", who: "brangaene", last: "The sail is mended.", t: "Mon" },
+    { id: "mark", who: "mark", last: ["You", "I'll bring the map."], t: "Mon" },
+    { id: "melot", who: "melot", last: "Saw you at the harbour.", t: "Sun" },
+    { id: "kurwenal", who: "kurwenal", last: ["You", "Thanks for the rope!"], t: "12 Nov" },
+  ];
+  const REQUESTS = [{ id: "inkwell", who: "inkwell", last: "Hi! Saw your print on the board…", t: "08:12", request: true }];
+
+  // ── Navigation state: a tab, and a stack of screens pushed over it ──
+  const S = { tab: "chats", stack: [], sheet: null, scanning: false, scanResult: null, anim: "fade-in", toast: "" };
+  const TABS = [["chats", "Chats", "chats"], ["boards", "Boards", "boards"], ["contacts", "Contacts", "contacts"], ["you", "You", null], ["settings", "Settings", "settings"]];
+
+  function tabbar() {
+    const unread = CHATS.reduce((n, c) => n + (c.muted ? 0 : c.unread || 0), 0) + REQUESTS.length;
+    return `<nav class="tabbar" aria-label="Places">${TABS.map(([k, l, ic]) => `
+      <button class="tab" data-tab="${k}" aria-current="${S.tab === k}">
+        <span class="pill">${ic ? icon(ic) : I.avatar(ME, "xs")}</span>${l}
+        ${k === "chats" && unread ? `<span class="count">${unread}</span>` : ""}${k === "boards" ? `<span class="dotnew" title="New threads on synced boards"></span>` : ""}
+      </button>`).join("")}</nav>`;
+  }
+
+  // ── Tab screens ────────────────────────────────────────────
+  function chatRow(c) {
+    const p = c.who && P[c.who];
+    const av = c.group ? `<span class="gav" style="--s:52px">C</span>` : I.avatar(p);
+    const name = c.group ? `<span class="id-name">${c.group}</span>` : I.nameHtml(p);
+    const last = Array.isArray(c.last) ? `<b>${c.last[0]}:</b> ${esc(c.last[1])}` : esc(c.last);
+    return `<div class="chatrow${c.unread ? " unread" : ""}${c.request ? " request" : ""}" data-open-chat="${c.id}" data-press="chat:${c.id}">
+      ${av}<span class="t1">${name}${p ? I.marks(p) : ""}${c.pinned ? icon("pin") : ""}${c.muted ? icon("bell-off") : ""}</span>
+      <span class="t2">${c.request ? "Wants to message you · " : ""}${last}</span>
+      <span class="end"><span class="time">${c.t}</span>${c.unread ? `<span class="badge${c.muted ? " muted" : ""}">${c.unread}</span>` : ""}</span></div>`;
+  }
+  const VIEWS = {
+    chats: () => ({
+      top: `<div class="topbar"><h1>Chats</h1><button class="icon-btn" aria-label="Search">${icon("search")}</button><button class="icon-btn" aria-label="New chat">${icon("plus")}</button><button class="cam" data-act="scan" aria-label="Scan a QR code">${icon("camera")}</button></div>`,
+      body: `<div class="sechead">Requests</div>${REQUESTS.map(chatRow).join("")}<div class="sechead">Chats</div>${CHATS.map(chatRow).join("")}`,
+    }),
+    contacts: () => {
+      const list = Object.entries(P).filter(([, p]) => p.contact).sort((a, b) => I.name(a[1]).plain.localeCompare(I.name(b[1]).plain));
+      return {
+        top: `<div class="topbar"><h1>Contacts</h1><button class="icon-btn" aria-label="Search">${icon("search")}</button><button class="cam" data-act="scan" aria-label="Scan a contact's QR" style="background:var(--color-3);color:var(--color-15);box-shadow:none">${icon("camera")}</button></div>`,
+        body: `<div class="hint-line">${icon("hand")}Tap to chat · hold for options</div><div class="contacts">${I.row(ME)}${list.map(([k, p]) => I.row(p).replace('<div class="id-row', `<div data-open-chat="${k}" data-press="contact:${k}" class="id-row`)).join("")}</div>`,
+      };
+    },
+    boards: () => ({
+      top: `<div class="topbar"><h1>Boards</h1><button class="icon-btn" aria-label="Search">${icon("search")}</button><button class="icon-btn" aria-label="New thread">${icon("plus")}</button></div>
+        <div class="boardtabs"><span class="on">All</span><span>Prints</span><span>Sea &amp; ships</span><span>Gardens</span><span>Kept</span></div>`,
+      body: `<div class="tiles">${[["330%", "68% 34%", "Found this print at a flea market"], ["300%", "50% 6%", "First lilies of the year"], ["420%", "74% 62%", "Detail crops of the Isolde print"], ["260%", "92% 20%", "Post your favourite posters"], ["240%", "30% 80%", "Rehearsal on deck"], ["380%", "56% 18%", "Moon study, risograph"]].map(([s, p, t]) => `<div class="tile"><div class="img" style="background-size:${s};background-position:${p}"></div><div class="tt">${t}</div></div>`).join("")}</div>`,
+    }),
+    you: () => ({
+      top: `<div class="topbar"><h1>You</h1><button class="icon-btn" aria-label="Edit name">${icon("pencil")}</button><button class="icon-btn" aria-label="Share">${icon("share")}</button></div>`,
+      body: `<div class="page">${I.card(ME, { qr: isolQr("isol:pub:" + ME.key) })}
+        <div class="list"><div class="li">${icon("laptop")}<span class="txt">Linked devices<small>Firefox · Linux, active now</small></span>${icon("chev", "chev")}</div>
+        <div class="li">${icon("key")}<span class="txt">Recovery words<small>Saved 3 Oct 2026</small></span>${icon("chev", "chev")}</div>
+        <div class="li">${icon("share")}<span class="txt">Move identity<small>To another device</small></span>${icon("chev", "chev")}</div></div></div>`,
+    }),
+    settings: () => ({
+      top: `<div class="topbar"><h1>Settings</h1></div>`,
+      body: `<div class="list">${[["network", "Network", "Connections, swarms, trackers, file sharing"], ["store", "Storage", "Kept threads, synced boards: 812 MB"], ["bell", "Notifications", "Sounds, previews, muted chats"], ["lock", "Privacy", "Read receipts, typing, blocked"], ["moon", "Appearance", "Day, night, or follow the system"], ["laptop", "Linked devices", "1 browser"]].map(([ic, t, s]) => `<div class="li" data-push="setting:${t}">${icon(ic)}<span class="txt">${t}<small>${s}</small></span>${icon("chev", "chev")}</div>`).join("")}</div>`,
+    }),
+  };
+
+  // ── Pushed screens ─────────────────────────────────────────
+  function pushed(top) {
+    const [kind, arg] = top.split(":");
+    if (kind === "chat") {
+      const c = [...CHATS, ...REQUESTS].find(x => x.id === arg), p = c && c.who ? P[c.who] : null;
+      const head = p ? I.header(p, c.request ? "" : "online") : `<div class="id-head"><span class="gav" style="--s:40px;font-size:16px">C</span><div><div class="l1"><span class="id-name">Cornwall</span></div><div class="l2">You, Isolde, Brangäne, Mark, Kurwenal</div></div></div>`;
+      const msgs = c.request
+        ? `<div class="day">Today</div><div class="b in">Hi! Saw your print on the board, is it a real Beardsley? <span class="t">08:12</span></div>`
+        : `<div class="day">Today</div><div class="b in">Did the ship make it to Cornwall? <span class="t">09:12</span></div><div class="b out">Just docked. The sea was kind tonight. <span class="t">09:30 ✓✓</span></div><div class="b in">${esc(Array.isArray(c.last) ? c.last[1] : c.last)} <span class="t">${c.t}</span></div>`;
+      return {
+        top: `<div class="subbar"><button class="icon-btn" data-act="back" aria-label="Back">${icon("back")}</button><button class="who" data-push="info:${c.who || "cornwall"}" aria-label="Contact info">${head}</button><button class="icon-btn" data-push="info:${c.who || "cornwall"}" aria-label="Info">${icon("info")}</button></div>`,
+        body: `<div class="thread">${msgs}</div>${c.request ? `<div style="padding:12px 14px;display:grid;gap:8px;border-top:1px solid var(--rule-soft)"><span style="font-size:13.5px;color:var(--text-muted);text-align:center">“inkwell” isn't in your contacts.</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn btn-ghost" data-act="back">Ignore</button><button class="btn btn-primary" data-act="toast" data-msg="Added to contacts">Accept</button></div></div>` : ""}`,
+        bottom: c.request ? "" : `<div class="composer"><span class="round plus">${icon("plus")}</span><span class="field">Message</span><span class="round">${icon("mic")}</span></div>`,
+      };
+    }
+    if (kind === "info") {
+      if (arg === "cornwall") return { top: `<div class="subbar"><button class="icon-btn" data-act="back">${icon("back")}</button><span class="grow"><h2>Group info</h2></span></div>`,
+        body: `<div class="page"><div class="list">${["isolde", "brangaene", "mark", "kurwenal"].map(k => I.row(P[k])).join("")}${I.row(ME)}</div></div>` };
+      const p = P[arg];
+      return {
+        top: `<div class="subbar"><button class="icon-btn" data-act="back" aria-label="Back">${icon("back")}</button><span class="grow"><h2>Contact info</h2></span><button class="icon-btn">${icon("more")}</button></div>`,
+        body: `<div class="page">${I.card(p)}
+          <div class="acts"><button data-act="back">${icon("chats")}Message</button><button data-act="scan">${icon("camera")}Verify</button><button>${icon("pencil")}Rename</button><button>${icon("share")}Share</button></div>
+          <div class="list"><div class="li">${icon("bell-off")}<span class="txt">Mute</span>${icon("chev", "chev")}</div><div class="li danger">${icon("trash")}<span class="txt">Remove contact</span></div></div></div>`,
+      };
+    }
+    if (kind === "setting") return { top: `<div class="subbar"><button class="icon-btn" data-act="back">${icon("back")}</button><span class="grow"><h2>${arg}</h2></span></div>`,
+      body: `<div style="padding:24px 20px;color:var(--text-muted);font-size:15px">${arg === "Network" ? `The full Network page is designed in <a href="../network-settings/index.html">Network settings</a>.` : `${arg} settings go here.`}</div>` };
+  }
+
+  // ── Sheets ─────────────────────────────────────────────────
+  function sheetHtml() {
+    const [kind, arg] = S.sheet.split(":");
+    if (kind === "contact") {
+      const p = P[arg];
+      return `<div class="shead">${I.row(p)}</div><div class="list">
+        <div class="li" data-open-chat="${arg}">${icon("chats")}<span class="txt">Message</span></div>
+        <div class="li" data-push="info:${arg}">${icon("info")}<span class="txt">Contact info</span></div>
+        <div class="li" data-act="scan">${icon("seal")}<span class="txt">${p.verified ? "Verified" : "Verify"}<small>${p.verified ? `QR scanned ${p.verified.on}` : "Scan their QR in person"}</small></span></div>
+        <div class="li" data-act="toast" data-msg="${p.trusted ? "No longer trusted" : "Marked as trusted"}">${icon("heart")}<span class="txt">${p.trusted ? "Stop trusting" : "Trust"}</span></div>
+        <div class="li">${icon("pencil")}<span class="txt">Rename</span></div>
+        <div class="li">${icon("share")}<span class="txt">Share contact</span></div>
+        <div class="li danger">${icon("trash")}<span class="txt">Remove</span></div></div>`;
+    }
+    if (kind === "chat") {
+      const c = [...CHATS, ...REQUESTS].find(x => x.id === arg), p = c.who && P[c.who];
+      return `<div class="shead">${p ? I.row(p) : `<div class="id-row"><span class="gav" style="--s:40px;font-size:16px;grid-row:span 2">C</span><span class="l1"><span class="id-name">Cornwall</span></span><span class="l2">5 members</span></div>`}</div><div class="list">
+        <div class="li" data-act="toast" data-msg="${c.pinned ? "Unpinned" : "Pinned"}">${icon("pin")}<span class="txt">${c.pinned ? "Unpin" : "Pin to top"}</span></div>
+        <div class="li" data-act="toast" data-msg="${c.muted ? "Unmuted" : "Muted"}">${icon("bell-off")}<span class="txt">${c.muted ? "Unmute" : "Mute"}</span></div>
+        <div class="li" data-act="toast" data-msg="Marked as read">${icon("check2")}<span class="txt">Mark as read</span></div>
+        ${p ? `<div class="li" data-push="info:${c.who}">${icon("info")}<span class="txt">Contact info</span></div>` : ""}
+        <div class="li danger">${icon("trash")}<span class="txt">Delete chat</span></div></div>`;
+    }
+    // Scanner results
+    if (kind === "scan") {
+      if (arg === "contact") { const p = { key: "5f0a8c2e1d4b6f9a3c7e0b2d5f8a1c4e7b0d3f6a9c2e5b8d1f4a7c0e3b6d9f2a", theirs: "Dinadan" };
+        return `<h4>Add a contact</h4><p class="sub">Scanned in person, so they'll be marked as verified.</p><div class="pv">${I.row(p)}</div>
+          <div class="btns"><button class="btn btn-ghost" data-act="close-sheet">Cancel</button><button class="btn btn-primary" data-act="toast" data-msg="“Dinadan” added and verified">Add</button></div>`; }
+      if (arg === "verify") { const p = P.kurwenal;
+        return `<h4>It's “Kurwenal”</h4><p class="sub">This QR matches the key in your contacts.</p><div class="pv">${I.row(p)}</div>
+          <div class="btns"><button class="btn btn-ghost" data-act="close-sheet">Not now</button><button class="btn btn-primary" data-act="toast" data-msg="Kurwenal is verified">Mark verified</button></div>`; }
+      if (arg === "login") return `<h4>Link this browser?</h4><p class="sub">Firefox · Linux</p><div style="text-align:center;font-family:var(--font-mono);font-size:34px;margin:0 0 6px">482 193</div><p class="sub">Does the computer show the same code?</p>
+          <p class="warn">${icon("info")}Only link a browser you're sitting in front of. It will get your identity and chats.</p>
+          <div class="btns"><button class="btn btn-ghost" data-act="close-sheet">Cancel</button><button class="btn btn-accent" data-act="toast" data-msg="Browser linked">Link</button></div>`;
+      if (arg === "group") return `<h4>Join “Sea &amp; ships”?</h4><p class="sub">A group with 12 members. An admin will approve your request.</p>
+          <div class="facts"><div><span>Invited by</span><b>“inkwell”</b></div><div><span>Members you know</span><b>Brangäne, King Mark</b></div></div>
+          <div class="btns"><button class="btn btn-ghost" data-act="close-sheet">Cancel</button><button class="btn btn-primary" data-act="toast" data-msg="Request sent">Ask to join</button></div>`;
+      if (arg === "identity") return `<h4>Move an identity here?</h4><p class="sub">This QR holds a private key: whoever scans it becomes that identity.</p>
+          <div class="pv">${I.row({ key: "b1c2d3e4f5061728394a5b6c7d8e9f00112233445566778899aabbccddeeff00", theirs: "Tristan (old phone)" })}</div>
+          <p class="warn">${icon("info")}This phone already has an identity. Moving replaces it on this device.</p>
+          <div class="btns"><button class="btn btn-ghost" data-act="close-sheet">Cancel</button><button class="btn btn-accent" data-act="toast" data-msg="Identity moved">Move here</button></div>`;
+      if (arg === "unknown") return `<h4>Not an Isol code</h4><p class="sub">It says: <code style="font-family:var(--font-mono)">https://example.org/menu</code></p>
+          <div class="btns"><button class="btn btn-ghost" data-act="close-sheet">Close</button><button class="btn btn-primary" data-act="toast" data-msg="Copied">Copy text</button></div>`;
+    }
+  }
+
+  // ── Render ─────────────────────────────────────────────────
+  function render() {
+    const top = S.stack[S.stack.length - 1];
+    const v = top ? pushed(top) : VIEWS[S.tab]();
+    const qr = isolQr("isol:pub:5f0a8c2e1d4b6f9a3c7e0b2d5f8a1c4e7b0d3f6a9c2e5b8d1f4a7c0e3b6d9f2a");
+    screen.innerHTML = `
+      <div class="statusbar${S.scanning ? " light" : ""}"><span>9:41</span><span>● ● ●</span></div>
+      <div class="view ${S.anim}">${v.top}<div class="body">${v.body}</div>${top ? (v.bottom || "") : tabbar()}</div>
+      ${S.scanning ? `<div class="scanner"><button class="icon-btn close" data-act="close-scan" aria-label="Close">${icon("x")}</button><button class="icon-btn torch" aria-label="Torch">${icon("torch")}</button>
+          <div class="scene">${qr}</div><div class="finder"><i></i><i></i><i></i><i></i><span class="beam"></span></div>
+          <div class="hint"><b>Scan a QR code</b>A contact, a browser to link, a group invite, an identity</div>
+          <div class="demo"><span>Pretend it found</span>${[["contact", "A new contact"], ["verify", "A contact's QR"], ["login", "A browser login"], ["group", "A group invite"], ["identity", "An identity"], ["unknown", "Something else"]].map(([k, l]) => `<button data-found="${k}">${l}</button>`).join("")}</div></div>` : ""}
+      ${S.sheet ? `<div class="shade" data-act="close-sheet"></div><div class="sheet" role="dialog"><div class="grab"></div>${sheetHtml()}</div>` : ""}
+      ${S.toast ? `<div class="toast">${S.toast}</div>` : ""}`;
+    S.anim = "";
+    syncMap();
+  }
+
+  function push(screenId) { S.stack.push(screenId); S.sheet = null; S.anim = "push-in"; render(); }
+  function back() { if (S.sheet) { S.sheet = null; return render(); } if (S.scanning) { S.scanning = false; return render(); } if (S.stack.length) { S.stack.pop(); S.anim = "pop-in"; render(); } }
+  function toast(msg) { S.sheet = null; S.scanning = false; S.toast = msg; render(); setTimeout(() => { S.toast = ""; render(); }, 1600); }
+
+  // Long-press: half a second on a [data-press] target opens its sheet; a short tap does the normal thing.
+  let pressTimer = null, pressed = false, pressEl = null;
+  screen.addEventListener("pointerdown", e => {
+    const el = e.target.closest("[data-press]"); if (!el || e.button === 2) return;
+    pressed = false; pressEl = el; el.classList.add("pressing");
+    pressTimer = setTimeout(() => { pressed = true; el.classList.remove("pressing"); if (navigator.vibrate) navigator.vibrate(12); S.sheet = el.dataset.press; render(); }, 500);
+  });
+  const cancelPress = () => { clearTimeout(pressTimer); pressEl?.classList.remove("pressing"); };
+  screen.addEventListener("pointerup", cancelPress); screen.addEventListener("pointerleave", cancelPress); screen.addEventListener("pointercancel", cancelPress);
+  screen.addEventListener("contextmenu", e => { const el = e.target.closest("[data-press]"); if (!el) return; e.preventDefault(); cancelPress(); pressed = true; S.sheet = el.dataset.press; render(); });
+
+  screen.addEventListener("click", e => {
+    if (pressed) { pressed = false; return; }
+    const t = e.target;
+    const f = t.closest("[data-found]"); if (f) { S.scanning = false; S.sheet = "scan:" + f.dataset.found; return render(); }
+    const tab = t.closest("[data-tab]"); if (tab) { S.tab = tab.dataset.tab; S.stack = []; S.sheet = null; S.anim = "fade-in"; return render(); }
+    const oc = t.closest("[data-open-chat]"); if (oc) { if (S.tab !== "chats" && !S.sheet) {} S.sheet = null; return push("chat:" + oc.dataset.openChat); }
+    const pu = t.closest("[data-push]"); if (pu) return push(pu.dataset.push);
+    const a = t.closest("[data-act]"); if (!a) return;
+    const act = a.dataset.act;
+    if (act === "back") back();
+    else if (act === "scan") { S.sheet = null; S.scanning = true; render(); }
+    else if (act === "close-scan") { S.scanning = false; render(); }
+    else if (act === "close-sheet") { S.sheet = null; render(); }
+    else if (act === "toast") toast(a.dataset.msg);
+  });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") back(); });
+
+  // ── Screen map ─────────────────────────────────────────────
+  const JUMPS = {
+    "jump-tabs": TABS.map(([k, l]) => [l, () => { S.tab = k; S.stack = []; S.sheet = null; S.scanning = false; S.anim = "fade-in"; }, () => S.tab === k && !S.stack.length && !S.sheet && !S.scanning]),
+    "jump-push": [["Chat with Isolde", () => { S.tab = "chats"; S.stack = ["chat:isolde"]; }, () => S.stack.at(-1) === "chat:isolde"],
+                  ["Contact info", () => { S.tab = "chats"; S.stack = ["chat:isolde", "info:isolde"]; }, () => S.stack.at(-1) === "info:isolde"],
+                  ["Message request", () => { S.tab = "chats"; S.stack = ["chat:inkwell"]; }, () => S.stack.at(-1) === "chat:inkwell"],
+                  ["Group chat", () => { S.tab = "chats"; S.stack = ["chat:cornwall"]; }, () => S.stack.at(-1) === "chat:cornwall"]],
+    "jump-sheets": [["Contact, long-press", () => { S.tab = "contacts"; S.stack = []; S.sheet = "contact:mark"; }, () => S.sheet === "contact:mark"],
+                    ["Chat, long-press", () => { S.tab = "chats"; S.stack = []; S.sheet = "chat:cornwall"; }, () => S.sheet === "chat:cornwall"]],
+    "jump-scan": [["Camera", () => { S.tab = "chats"; S.stack = []; S.sheet = null; S.scanning = true; }, () => S.scanning],
+                  ...[["contact", "New contact"], ["verify", "Verify contact"], ["login", "Browser login"], ["group", "Group invite"], ["identity", "Identity"], ["unknown", "Not Isol"]].map(([k, l]) => [l, () => { S.tab = "chats"; S.stack = []; S.scanning = false; S.sheet = "scan:" + k; }, () => S.sheet === "scan:" + k])],
+  };
+  function syncMap() { for (const [id, items] of Object.entries(JUMPS)) $(id).querySelectorAll("button").forEach((b, i) => b.setAttribute("aria-pressed", items[i][2]())); }
+  for (const [id, items] of Object.entries(JUMPS)) {
+    $(id).innerHTML = items.map(([l], i) => `<button data-i="${i}">${l}</button>`).join("");
+    $(id).addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; S.sheet = null; S.scanning = false; items[+b.dataset.i][1](); S.anim = "fade-in"; render(); });
+  }
+  const q = new URLSearchParams(location.search).get("show");
+  render();
+  if (q) { for (const items of Object.values(JUMPS)) { const hit = items.find(([l]) => l.toLowerCase().replace(/[^a-z]/g, "") === q); if (hit) { hit[1](); render(); } } }
+</script>
+</body>
+</html>

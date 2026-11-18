@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Identity Creation POC</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/components.css">
+<style>
+  /* Component: identity creation (.idc). Shared card, plate and hex styles are in components.css.
+     The vertical chain shows how each value is derived from the one above. */
+
+  /* Empty state */
+  .idc-empty { display: grid; gap: 20px; justify-items: start; }
+  .idc-empty .recipe { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; font-family: var(--font-mono); font-size: 15px; color: var(--text-muted); }
+  .idc-empty .recipe b { font-weight: 700; color: var(--text); }
+  .idc-empty .recipe .arrow { color: var(--color-14); }
+  .idc-empty .fine { margin: 0; font-size: 14px; font-style: italic; color: var(--text-muted); }
+
+  /* Words */
+  .words { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 10px; }
+  .words li {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px;
+    border: 1px solid rgba(199,174,141,.4);
+    border-radius: var(--r-sm);
+    font-family: var(--font-mono); font-size: 18px; line-height: 1.2;
+    min-width: 0;
+  }
+  .words .n { font-size: 13px; color: var(--secret-ornament); min-width: 2ch; text-align: right; user-select: none; }
+  .words .w { overflow: hidden; text-overflow: ellipsis; }
+  .masked .words .w { color: transparent; position: relative; user-select: none; display: inline-block; flex: 1; height: 1em; }
+  .masked .words .w::after {
+    content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 6px; margin-top: -3px;
+    background: repeating-linear-gradient(90deg, var(--secret-dim) 0 6px, transparent 6px 10px);
+    opacity: .55; border-radius: 3px;
+  }
+
+  /* The derivation link between plates */
+  .link {
+    display: grid; grid-template-columns: 24px 1fr; align-items: center; gap: 10px;
+    padding: 6px 0 6px 18px;
+    font-family: var(--font-mono); font-size: 14px; color: var(--text-muted);
+  }
+  .link svg { width: 24px; height: 34px; color: var(--color-14); }
+  .link b { color: var(--text); font-weight: 400; }
+
+  .idc.narrow .words { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .idc.narrow .link { padding-left: 8px; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5.5A1.5 1.5 0 0 1 6.5 4H15"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l2 2"/></symbol>
+</svg>
+
+<div class="frame">
+  <header class="masthead">
+    <a href="../index.html">← Isol POCs</a>
+    <h1>Create identity</h1>
+    <p>A raw identity: twelve words, the private key they make, and the public key you share. No profile, no picture.</p>
+  </header>
+
+  <section class="sect">
+    <div class="toolbar">
+      <div><span class="lbl">State</span>
+        <div class="segmented" role="group" aria-label="State" id="state-ctl">
+          <button data-state="empty" aria-pressed="false">Empty</button>
+          <button data-state="created" aria-pressed="true">Created</button>
+          <button data-state="revealed" aria-pressed="false">Revealed</button>
+        </div>
+      </div>
+      <div><span class="lbl">Width</span>
+        <div class="segmented" role="group" aria-label="Width" id="width-ctl">
+          <button data-width="wide" aria-pressed="true">Wide</button>
+          <button data-width="phone" aria-pressed="false">Phone</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage" id="stage" data-width="wide">
+      <article class="card idc" id="idc" aria-labelledby="idc-title"></article>
+    </div>
+  </section>
+
+  <section class="sect">
+    <p class="eyebrow">Design notes</p>
+    <h2>Why it looks like this</h2>
+    <div class="notes">
+      <div><h3>Dark means secret</h3><p>The words and the private key sit on Aubergine plates. The public key sits on Vellum. You can tell what is safe to share without reading a label.</p></div>
+      <div><h3>The chain is the explanation</h3><p>Plates go top to bottom in derivation order, with the step between each pair: words <code>→</code> private key <code>→</code> public key. The steps are named because this is the raw identity, not a profile.</p></div>
+      <div><h3>Masked, not blurred</h3><p>Hidden secrets are dashed bars of the same length for every word. Blur can leak the shape of the text and is harder to read as "hidden".</p></div>
+      <div><h3>Hex in fours</h3><p>The 64-character keys are split into 16 groups of four, with every other group slightly dimmer. That makes them easier to read aloud or compare. Copy always gives the plain hex.</p></div>
+      <div><h3>One deliberate gate</h3><p>"Use this identity" stays disabled until you confirm you saved the words. It is the only friction in the flow.</p></div>
+      <div><h3>Real keys</h3><p>The keys are made by isol's own crypto: BIP39 words, BIP32 at <code>m/44'/1237'/0'/0/0</code> (NIP-06) and secp256k1 Schnorr x-only public keys. Nothing is stored or sent.</p></div>
+    </div>
+  </section>
+</div>
+
+<script src="../shared/identity-crypto.js"></script>
+<script>
+  const PATH = "m/44'/1237'/0'/0/0";
+  const root = document.getElementById("idc");
+  const stage = document.getElementById("stage");
+
+  const state = { identity: null, showWords: false, showPriv: false, saved: false };
+
+  const icon = id => `<svg class="i" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+  const groups = hex => hex.match(/.{4}/g).map(g => `<span>${g}</span>`).join("");
+  const short = hex => `${hex.slice(0, 8)}…${hex.slice(-8)}`;
+
+  function render() {
+    const id = state.identity;
+    root.classList.toggle("narrow", stage.dataset.width === "phone" || root.clientWidth < 520);
+
+    if (!id) {
+      root.innerHTML = `
+        <header class="card-head">
+          <div class="kicker">Identity</div>
+          <h2 id="idc-title">New identity</h2>
+          <p>An identity is a key pair. Twelve words make the private key, and the private key makes the public key that others know you by.</p>
+        </header>
+        <div class="card-body idc-empty">
+          <div class="recipe" aria-label="12 words, then private key, then public key">
+            <b>12 words</b><span class="arrow">→</span><b>private key</b><span class="arrow">→</span><b>public key</b>
+          </div>
+          <button class="btn btn-primary" data-act="create">${icon("key")}Generate key pair</button>
+          <p class="fine">Made in this browser. Nothing is stored or sent.</p>
+        </div>`;
+      return;
+    }
+
+    const words = id.mnemonic.split(" ");
+    root.innerHTML = `
+      <header class="card-head">
+        <div class="kicker">Identity</div>
+        <h2 id="idc-title">New identity</h2>
+        <p>Write the twelve words down somewhere safe. They are the only way to get this identity back.</p>
+      </header>
+
+      <div class="card-body">
+        <div class="plate secret ${state.showWords ? "" : "masked"}">
+          <div class="plate-head">
+            <h3>Recovery words</h3><span class="tag keep">Keep secret</span><span class="meta">BIP39 · 12</span>
+            <div class="actions">
+              <button class="btn btn-sm" data-act="toggle-words" aria-pressed="${state.showWords}">${icon(state.showWords ? "eye-off" : "eye")}<span class="lbl">${state.showWords ? "Hide words" : "Reveal words"}</span></button>
+              <button class="btn btn-sm" data-act="copy" data-copy="mnemonic">${icon("copy")}<span class="lbl">Copy</span></button>
+            </div>
+          </div>
+          <div class="plate-body">
+            <ol class="words" aria-label="${state.showWords ? "Recovery words" : "Recovery words, hidden"}">
+              ${words.map((w, i) => `<li><span class="n">${i + 1}</span><span class="w">${state.showWords ? w : ""}</span></li>`).join("")}
+            </ol>
+          </div>
+        </div>
+
+        <div class="link">
+          <svg viewBox="0 0 24 34" aria-hidden="true"><path d="M12 0v26" stroke="currentColor" stroke-width="1.5"/><path d="M6 22l6 8 6-8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 9l3 3-3 3-3-3z" fill="currentColor"/></svg>
+          <span>seed → <b>${PATH}</b></span>
+        </div>
+
+        <div class="plate secret ${state.showPriv ? "" : "masked"}">
+          <div class="plate-head">
+            <h3>Private key</h3><span class="tag keep">Keep secret</span><span class="meta">32 bytes · hex</span>
+            <div class="actions">
+              <button class="btn btn-sm" data-act="toggle-priv" aria-pressed="${state.showPriv}">${icon(state.showPriv ? "eye-off" : "eye")}<span class="lbl">${state.showPriv ? "Hide key" : "Reveal key"}</span></button>
+              <button class="btn btn-sm" data-act="copy" data-copy="privateKey">${icon("copy")}<span class="lbl">Copy</span></button>
+            </div>
+          </div>
+          <div class="plate-body">
+            <div class="hex" aria-label="${state.showPriv ? "Private key" : "Private key, hidden"}">${state.showPriv ? groups(id.privateKey) : groups("0".repeat(64)).replace(/0000/g, "&nbsp;&nbsp;&nbsp;&nbsp;")}</div>
+          </div>
+        </div>
+
+        <div class="link">
+          <svg viewBox="0 0 24 34" aria-hidden="true"><path d="M12 0v26" stroke="currentColor" stroke-width="1.5"/><path d="M6 22l6 8 6-8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 9l3 3-3 3-3-3z" fill="currentColor"/></svg>
+          <span><b>secp256k1</b> · Schnorr x-only</span>
+        </div>
+
+        <div class="plate public">
+          <div class="plate-head">
+            <h3>Public key</h3><span class="tag share">Share</span><span class="meta">${short(id.publicKey)}</span>
+            <div class="actions">
+              <button class="btn btn-sm btn-ghost" data-act="copy" data-copy="publicKey">${icon("copy")}<span class="lbl">Copy</span></button>
+            </div>
+          </div>
+          <div class="plate-body">
+            <div class="hex" aria-label="Public key">${groups(id.publicKey)}</div>
+          </div>
+        </div>
+
+        <p class="card-note">Not saved yet. Reloading this page loses it.</p>
+      </div>
+
+      <footer class="card-foot">
+        <label class="check"><input type="checkbox" data-act="saved" ${state.saved ? "checked" : ""}> I wrote down the twelve words</label>
+        <div class="buttons">
+          <button class="btn btn-ghost" data-act="create">${icon("refresh")}Another</button>
+          <button class="btn btn-accent" data-act="use" ${state.saved ? "" : "disabled"}>Use this identity</button>
+        </div>
+      </footer>`;
+  }
+
+  function create() {
+    state.identity = IsolCrypto.create();
+    state.showWords = state.showPriv = state.saved = false;
+  }
+
+  root.addEventListener("click", async e => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const act = b.dataset.act;
+    if (act === "create") { create(); setState(null); render(); }
+    else if (act === "toggle-words") { state.showWords = !state.showWords; render(); }
+    else if (act === "toggle-priv") { state.showPriv = !state.showPriv; render(); }
+    else if (act === "copy") {
+      try { await navigator.clipboard.writeText(state.identity[b.dataset.copy]); } catch (err) {}
+      const label = b.querySelector(".lbl"); const use = b.querySelector("use");
+      label.textContent = "Copied"; use.setAttribute("href", "#i-check"); b.classList.add("copied-flash");
+      setTimeout(() => { label.textContent = "Copy"; use.setAttribute("href", "#i-copy"); b.classList.remove("copied-flash"); }, 1200);
+    }
+    else if (act === "use") { b.textContent = "Done (POC)"; }
+  });
+  root.addEventListener("change", e => {
+    if (e.target.dataset.act === "saved") { state.saved = e.target.checked; render(); root.querySelector("[data-act=saved]").focus(); }
+  });
+
+  // POC toolbar
+  function press(ctl, attr, value) {
+    ctl.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset[attr] === value));
+  }
+  const stateCtl = document.getElementById("state-ctl");
+  function setState(s) { press(stateCtl, "state", s); }
+  stateCtl.addEventListener("click", e => {
+    const s = e.target.closest("button")?.dataset.state; if (!s) return;
+    if (s === "empty") state.identity = null;
+    else {
+      if (!state.identity) create();
+      state.showWords = state.showPriv = s === "revealed";
+    }
+    setState(s); render();
+  });
+  const widthCtl = document.getElementById("width-ctl");
+  widthCtl.addEventListener("click", e => {
+    const w = e.target.closest("button")?.dataset.width; if (!w) return;
+    stage.dataset.width = w; press(widthCtl, "width", w); render();
+  });
+  new ResizeObserver(() => {
+    const narrow = stage.dataset.width === "phone" || root.clientWidth < 520;
+    if (narrow !== root.classList.contains("narrow")) render();
+  }).observe(root);
+
+  create(); render();
+</script>
+</body>
+</html>

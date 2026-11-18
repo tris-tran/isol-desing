@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Message Types POC</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/components.css">
+<link rel="stylesheet" href="../shared/messages.css">
+<style>
+  .frame { max-width: 1280px; }
+  .specs { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px; }
+  .phone .specs { grid-template-columns: repeat(auto-fill, 372px); justify-content: start; }
+  .spec { border: var(--line) solid var(--rule-soft); border-radius: 12px; background: var(--color-1); overflow: hidden; display: grid; grid-template-rows: auto 1fr; }
+  .spec > header { padding: 12px 14px 10px; border-bottom: 1px solid var(--rule-soft); }
+  .spec h3 { margin: 0; font-size: 15px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+  .spec h3 code { font-family: var(--font-mono); font-size: 12.5px; color: var(--accent-strong); font-weight: 400; }
+  .spec header p { margin: 3px 0 0; font-size: 13.5px; color: var(--text-muted); }
+  .thread { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px 16px; background: var(--color-1); min-width: 0; }
+  .thread .msg { max-width: 100%; }
+  .group-ctx .thread .msg.in { max-width: calc(100% - 4px); }
+  .section-head { margin: 40px 0 16px; }
+  .section-head:first-of-type { margin-top: 8px; }
+  .section-head h2 { margin: 0 0 4px; }
+  .section-head p { margin: 0; color: var(--text-muted); max-width: 70ch; }
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px 28px; margin-top: 14px; }
+  .rules div { font-size: 14.5px; color: var(--text-muted); }
+  .rules b { color: var(--text); font-weight: 500; display: block; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-check2" viewBox="0 0 24 24"><path d="M2.5 12.5l4.5 4.5L16.5 7.5M12 16.5l.5.5L22 7.5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+</svg>
+
+<div class="frame">
+  <header class="masthead">
+    <a href="../index.html">← Isol POCs</a>
+    <h1>Message types</h1>
+    <p>Polls, places, events and future secrets, each designed on its own in every state, incoming and outgoing, before they go into the chat.</p>
+  </header>
+
+  <section class="sect" id="root">
+    <div class="toolbar">
+      <div><span class="lbl">Width</span>
+        <div class="segmented" role="group" aria-label="Width" id="width-ctl">
+          <button data-v="wide" aria-pressed="true">Wide</button>
+          <button data-v="phone" aria-pressed="false">Phone</button>
+        </div>
+      </div>
+      <div><span class="lbl">Chat</span>
+        <div class="segmented" role="group" aria-label="Chat" id="ctx-ctl">
+          <button data-v="direct" aria-pressed="true">1:1</button>
+          <button data-v="group" aria-pressed="false">Group</button>
+        </div>
+      </div>
+    </div>
+    <div class="rules">
+      <div><b>One width</b>Every special message is 300px wide, or narrower on small screens. Nothing in them depends on the text around it.</div>
+      <div><b>Time in the footer</b>The time and ticks sit in a footer row (or the caption grid for places), never floating over content.</div>
+      <div><b>Light and dark</b>Incoming bubbles are Parchment, outgoing are Aubergine. Lines, fills and soft text follow the bubble through shared variables.</div>
+      <div><b>Secrets keep their own look</b>Sealed secrets are always the dark framed card, whoever sent them; unsealed, they turn light.</div>
+    </div>
+    <div id="out"></div>
+  </section>
+</div>
+
+<script src="../shared/messages.js"></script>
+<script>
+  IsolMsg.ensureSprite();
+  const $ = id => document.getElementById(id);
+  const P = { me: ["You", "#4A3B42"], isolde: ["Isolde", "#BC4D2D"], brangaene: ["Brangäne", "#528F8D"], mark: ["Mark", "#5E6950"], kurwenal: ["Kurwenal", "#C19A4B"] };
+  const INK = { isolde: "#BC4D2D", brangaene: "#3f716f", mark: "#5E6950", kurwenal: "#8a6a26" };
+  const avatar = (who, size = "") => `<span class="av ${size}${who === "kurwenal" ? " dark-ink" : ""}" style="--av:${P[who][1]}" title="${P[who][0]}">${P[who][0][0]}</span>`;
+  const statusIcon = st => !st ? "" : st === "pending" ? `<span class="pending">${'<svg class="i"><use href="#i-clock"/></svg>'}</span>`
+    : st === "sent" ? '<svg class="i"><use href="#i-check"/></svg>' : `<span class="${st === "read" ? "read" : ""}"><svg class="i"><use href="#i-check2"/></svg></span>`;
+  const meta = m => `<span class="meta">${m.t}${m.from === "me" ? statusIcon(m.status) : ""}</span>`;
+
+  // Times relative to now, so every state is always demonstrable.
+  const NOW = Date.now(), H = 3600e3, D = 24 * H;
+  const at = (days, h, m = 0) => { const d = new Date(NOW + days * D); d.setHours(h, m, 0, 0); return d; };
+  const xmas = (() => { const n = new Date(); let d = new Date(n.getFullYear(), 11, 24, 20, 0); if (d <= n) d = new Date(n.getFullYear() + 1, 11, 24, 20, 0); return d; })();
+  const opts = (...l) => l.map(([label, voters]) => ({ label, voters }));
+
+  const SPECS = [
+    { section: "Polls", lede: "Options are the buttons. Results stay hidden until you vote, so the poll doesn't steer you; then bars, percentages and the first voters appear, and you can still change your vote.", items: [
+      { label: "Not voted yet", key: "poll · open", msg: { from: "brangaene", t: "10:08", poll: { q: "When do we sail?", closes: "Thu 20:00", options: opts(["Friday at dawn", ["isolde", "mark"]], ["Saturday noon", ["brangaene", "kurwenal"]], ["Wait for calm seas", []]) } } },
+      { label: "Voted", key: "poll · voted", note: "Tap another option to move your vote.", msg: { from: "brangaene", t: "10:08", poll: { q: "When do we sail?", closes: "Thu 20:00", options: opts(["Friday at dawn", ["isolde", "mark"]], ["Saturday noon", ["brangaene", "kurwenal", "me"]], ["Wait for calm seas", []]) } } },
+      { label: "Multiple choice, yours", key: "poll · multi · out", note: "Square marks mean you can pick several.", msg: { from: "me", t: "11:20", status: "read", poll: { q: "What should we bring for the crossing? A long question to check that it wraps nicely across lines.", multi: true, closes: "tomorrow", options: opts(["Bread and cheese", ["me", "isolde", "mark", "kurwenal", "brangaene"]], ["A second sail, just in case the first one tears", ["me", "kurwenal"]], ["The harp", ["isolde"]]) } } },
+      { label: "Anonymous", key: "poll · anonymous", note: "Results without faces.", msg: { from: "isolde", t: "12:02", poll: { q: "Was it the potion?", anonymous: true, closes: "Sunday", options: opts(["Yes", ["mark", "kurwenal", "me"]], ["No, it was love", ["brangaene", "isolde"]]) } } },
+      { label: "Closed", key: "poll · closed", note: "Final results; the winner gets a Gilt star.", msg: { from: "mark", t: "Mon", poll: { q: "Name for the boat?", closed: true, options: opts(["The Goblet", ["isolde", "me", "brangaene"]], ["Cornwall Rose", ["mark"]], ["Second Chance", ["kurwenal"]]) } } },
+    ] },
+    { section: "Places", lede: "A small map in the palette, then the name and coordinates in a caption grid with the time on the right. Live locations pulse, count down, and stop by themselves.", items: [
+      { label: "A pin", key: "place · pin", msg: { from: "mark", t: "10:08", place: { name: "Tintagel harbour", addr: "Harbour Rd, Tintagel", coords: "50.6680° N, 4.7590° W" } } },
+      { label: "Live, theirs", key: "place · live", msg: { from: "isolde", t: "09:40", place: { name: "Isolde's location", addr: "Tintagel, Cornwall", coords: "50.6630° N, 4.7505° W", live: { total: 60, left: 12 } } } },
+      { label: "Live, yours", key: "place · live · out", note: "Only the sender sees Stop sharing.", msg: { from: "me", t: "09:42", status: "delivered", place: { name: "Your location", addr: "Fore St, Tintagel", coords: "50.6627° N, 4.7519° W", live: { total: 60, left: 48 } } } },
+      { label: "Live ended", key: "place · ended", note: "The map greys out; the last position stays.", msg: { from: "isolde", t: "08:10", place: { name: "Live location ended", addr: "Last seen near Tintagel", coords: "50.6630° N, 4.7505° W", live: { total: 15, left: 0, ended: true } } } },
+    ] },
+    { section: "Events", lede: "A calendar page (Madder month, big day, weekday), the time and place, Going / Maybe / Can't with counts, and who's going. Past and cancelled events drop the RSVP and say what happened.", items: [
+      { label: "Upcoming", key: "event", msg: { from: "isolde", t: "10:08", event: { title: "Sailing for Cornwall", start: at(5, 12), end: at(5, 18), place: "Tintagel harbour", going: ["isolde", "kurwenal"], maybe: ["mark"], no: [] } } },
+      { label: "Yours, you're going", key: "event · out", msg: { from: "me", t: "18:30", status: "read", event: { title: "Supper at the Harbour Inn, with a title long enough to wrap", start: at(3, 19, 30), end: at(3, 22), place: "The Harbour Inn, Fore Street, Tintagel", going: ["me", "isolde", "brangaene", "mark", "kurwenal"], maybe: [], no: [] } } },
+      { label: "Ended", key: "event · past", msg: { from: "brangaene", t: "Sat", event: { title: "Rehearsal on deck", start: at(-2, 16), end: at(-2, 18), place: "The ship", going: ["brangaene", "me", "isolde"], maybe: [], no: ["mark"] } } },
+      { label: "Cancelled", key: "event · cancelled", msg: { from: "mark", t: "Fri", event: { title: "Hunt in the forest", start: at(1, 7), end: at(1, 12), place: "King's forest", going: ["mark"], maybe: [], no: [], cancelled: true } } },
+    ] },
+    { section: "Future secrets", lede: "Sealed with a drand timelock: a dark card in the triple-rule frame, shimmering bars where the words are, the opening time and the drand round. When the round is out, it glows; unsealing reveals the text.", items: [
+      { label: "Sealed", key: "secret · sealed", msg: { from: "isolde", t: "09:44", secret: { when: xmas, sealed: "today" } } },
+      { label: "Yours, sealed", key: "secret · out", note: "The sender can't open it early either.", msg: { from: "me", t: "09:46", status: "delivered", secret: { when: at(31, 0), sealed: "today" } } },
+      { label: "Opening soon", key: "secret · soon", note: "Under an hour: the countdown turns Vermilion.", msg: { from: "isolde", t: "Sep 1", secret: { when: new Date(NOW + 25 * 60e3 + 9e3), sealed: "1 Sep" } } },
+      { label: "Waiting for drand", key: "secret · waiting", note: "Time's up but the round hasn't reached this device yet.", msg: { from: "brangaene", t: "Oct 3", secret: { when: new Date(NOW - 20e3), sealed: "3 Oct", waiting: true, text: "Ask Mark about the second goblet." } } },
+      { label: "Ready", key: "secret · ready", note: "Tap Unseal.", msg: { from: "isolde", t: "Sep 1", secret: { when: new Date(NOW - H), sealed: "1 Sep", text: "The goblet was never poisoned. I switched it before you came aboard." } } },
+      { label: "Unsealed", key: "secret · opened", msg: { from: "isolde", t: "Aug 2", secret: { when: new Date(NOW - 3 * D), sealed: "2 Aug", opened: true, text: "Meet me where the lilies grow on the south wall." } } },
+    ] },
+  ];
+
+  const S = { ctx: "direct", width: "wide" };
+  const all = SPECS.flatMap(s => s.items);
+  all.forEach((it, i) => it.id = "s" + i);
+  const byId = id => all.find(it => it.id === id)?.msg;
+
+  function bubble(it) {
+    const m = it.msg, dir = m.from === "me" ? "out" : "in", group = S.ctx === "group";
+    const o = { id: it.id, meta: meta(m), avatar, mine: m.from === "me" };
+    const inner = m.poll ? IsolMsg.poll(m.poll, o) : m.place ? IsolMsg.place(m.place, o) : m.event ? IsolMsg.event(m.event, o) : IsolMsg.secret(m.secret, o);
+    const sender = group && dir === "in" ? `<span class="sender" style="color:${INK[m.from]}">${P[m.from][0]}</span>` : "";
+    const av = group && dir === "in" ? `<span class="av-slot">${avatar(m.from, "sm")}</span>` : "";
+    return `<div class="msg ${dir} first last">${av}<div class="bubble${IsolMsg.bubbleClass(m)}">${sender}${inner}</div></div>`;
+  }
+
+  function render() {
+    $("root").classList.toggle("phone", S.width === "phone");
+    $("root").classList.toggle("group-ctx", S.ctx === "group");
+    $("out").innerHTML = SPECS.map(sec => `
+      <div class="section-head"><p class="eyebrow">Message type</p><h2>${sec.section}</h2><p>${sec.lede}</p></div>
+      <div class="specs">${sec.items.map(it => `
+        <article class="spec"><header><h3>${it.label} <code>${it.key}</code></h3>${it.note ? `<p>${it.note}</p>` : ""}</header>
+          <div class="thread">${bubble(it)}</div></article>`).join("")}</div>`).join("");
+    IsolMsg.settle(all.map(it => it.msg));
+  }
+
+  $("out").addEventListener("click", e => { if (IsolMsg.handle(e.target, byId)) render(); });
+  IsolMsg.tick($("out"), render);
+  function wire(ctl, fn) { $(ctl).addEventListener("click", e => { const v = e.target.closest("button")?.dataset.v; if (!v) return; $(ctl).querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === v)); fn(v); }); }
+  wire("width-ctl", v => { S.width = v; render(); });
+  wire("ctx-ctl", v => { S.ctx = v; render(); });
+  const q = new URLSearchParams(location.search);
+  if (q.get("width") === "phone") { S.width = "phone"; $("width-ctl").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === "phone")); }
+  if (q.get("ctx") === "group") { S.ctx = "group"; $("ctx-ctl").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === "group")); }
+  render();
+</script>
+</body>
+</html>

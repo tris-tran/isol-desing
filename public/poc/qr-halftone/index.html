@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Halftone QR</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/components.css">
+<style>
+  .frame { max-width: 1280px; }
+  .lbl { display: block; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+  .lbl output { font-family: var(--font-mono); font-size: 14px; letter-spacing: 0; text-transform: none; color: var(--text); margin-left: 6px; }
+  input[type=range] { width: 100%; accent-color: var(--color-10); }
+  .quick { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .quick button, .chipbtn { height: 28px; padding: 0 10px; border: 1px solid var(--rule); border-radius: 999px; background: none; cursor: pointer; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .1em; }
+  .quick button:hover, .chipbtn:hover { background: var(--color-3); }
+  .actions-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .chipbtn.risky::after { content: "!"; display: inline-grid; place-items: center; width: 14px; height: 14px; margin-left: 6px; border-radius: 50%; background: var(--color-10); color: var(--color-1); font-size: 10px; }
+  .chipbtn[aria-pressed=true] { background: var(--color-15); color: var(--color-1); border-color: var(--color-15); }
+
+  .studio { display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); gap: 28px; align-items: start; }
+  .panel { display: grid; gap: 22px; }
+  .group { border-top: 1px solid var(--rule-soft); padding-top: 16px; }
+  .group:first-child { border-top: 0; padding-top: 0; }
+  .group h3 { margin: 0 0 12px; font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; }
+  .sub { font-size: 14px; color: var(--text-muted); margin: -6px 0 10px; }
+
+  .stagewrap { position: sticky; top: 12px; display: grid; gap: 10px; }
+  .preview { background: var(--color-3); border: var(--line) solid var(--rule); padding: 16px; }
+  .preview .art { cursor: zoom-in; }
+  .preview .art svg { display: block; width: 100%; height: auto; }
+  .facts { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; font-family: var(--font-mono); font-size: 14px; color: var(--text-muted); }
+  .facts b { color: var(--text); font-weight: 400; }
+  .pill { display: inline-flex; align-items: center; height: 24px; padding: 0 9px; border-radius: 999px; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .08em; border: 1px solid currentColor; white-space: nowrap; }
+  .pill.wait { color: var(--text-faint); }
+  .pill.ok { background: var(--color-13); color: var(--color-1); border-color: var(--color-13); }
+  .pill.bad { background: var(--color-10); color: var(--color-1); border-color: var(--color-10); }
+  .pill.tier { color: var(--color-15); }
+
+  /* Tier table */
+  .tiers { display: grid; gap: 8px; }
+  .tier { display: grid; grid-template-columns: 22px 1fr 1fr 34px; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--rule-soft); border-radius: var(--r-sm); }
+  .tier.active { border-color: var(--color-15); background: rgba(217,196,165,.45); }
+  .tier .n { font-family: var(--font-display); font-weight: 700; font-size: 13px; color: var(--accent-strong); }
+  .tier label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); white-space: nowrap; }
+  .tier input { width: 100%; min-width: 0; height: 30px; padding: 0 6px; border: var(--line) solid var(--color-9); border-radius: var(--r-sm); background: var(--color-1); font-family: var(--font-mono); font-size: 14px; }
+  .tier input:focus { outline: none; border-color: var(--color-10); }
+  .tier .ec { font-family: var(--font-mono); font-size: 13px; text-align: center; }
+
+  /* Swatches */
+  .swatch-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .swatch-row .k { width: 44px; font-size: 13px; color: var(--text-muted); }
+  .sw { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--color-1); box-shadow: 0 0 0 1px rgba(74,59,66,.4); cursor: pointer; padding: 0; position: relative; }
+  .sw[aria-pressed=true] { box-shadow: 0 0 0 2px var(--color-15); }
+  .sw.low::after { content: "!"; position: absolute; right: -6px; top: -6px; width: 14px; height: 14px; border-radius: 50%; background: var(--color-10); color: var(--color-1); font: 700 10px/14px var(--font-display); text-align: center; }
+  .shape-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+
+  /* Strips of thumbnails */
+  .strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
+  .thumb { border: var(--line) solid var(--rule); background: var(--color-1); display: grid; cursor: pointer; text-align: left; padding: 0; font: inherit; color: inherit; }
+  .thumb:hover { box-shadow: 0 0 0 2px var(--color-10); }
+  .thumb.current { box-shadow: 0 0 0 3px var(--color-15); }
+  .thumb .art { padding: 10px; background: var(--color-3); border-bottom: var(--line) solid var(--rule); }
+  .thumb .art svg { display: block; width: 100%; height: auto; }
+  .thumb .cap { padding: 8px 10px 10px; display: grid; gap: 6px; }
+  .thumb b { font-weight: 500; font-size: 15px; }
+  .thumb small { font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); }
+
+  .scan { position: fixed; inset: 0; z-index: 50; background: var(--color-1); display: none; place-items: center; cursor: zoom-out; }
+  .scan.open { display: grid; }
+  .scan svg { width: min(98vw, 98vh); height: auto; }
+  .scan .hint { position: fixed; top: 8px; right: 12px; font-family: var(--font-display); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-muted); }
+
+  @media (max-width: 900px) { .studio { grid-template-columns: 1fr; } .stagewrap { position: static; order: -1; } }
+</style>
+</head>
+<body>
+
+<div class="frame">
+  <header class="masthead">
+    <a href="../index.html">← Isol POCs</a>
+    <h1>Halftone QR</h1>
+    <p>The Isolde halftone, tuned by size: small codes get small dots and more picture, dense codes get bigger dots. Plus a studio for the square markers.</p>
+  </header>
+
+  <section class="sect">
+    <div class="studio">
+      <div class="panel">
+        <div class="group">
+          <h3>Payload</h3>
+          <label class="lbl" for="bytes">Size <output id="bytes-out"></output></label>
+          <input type="range" id="bytes" min="16" max="1500" step="1">
+          <div class="quick" id="quick">
+            <button data-b="40">Short link · 40</button>
+            <button data-b="73">One key · 73</button>
+            <button data-b="207">Identity · 207</button>
+            <button data-b="800">800</button>
+            <button data-b="1500">Isol max · 1,500</button>
+          </div>
+        </div>
+
+        <div class="group">
+          <h3>Size tiers</h3>
+          <p class="sub">The dot size for each payload range. Error correction is the strongest that fits: H up to 1,273 bytes, then Q.</p>
+          <div class="tiers" id="tiers"></div>
+          <div class="quick" style="margin-top:10px">
+            <button id="tiers-reset">Reset tiers</button>
+            <button id="copy">Copy all settings</button>
+          </div>
+          <label class="check" style="margin-top:14px"><input type="checkbox" id="override-on"> Override the tier's dot size</label>
+          <div id="override-box" hidden style="margin-top:10px">
+            <label class="lbl" for="dot">Dot size <output id="dot-out"></output></label>
+            <input type="range" id="dot" min="0.2" max="0.7" step="0.05" value="0.4">
+          </div>
+        </div>
+
+        <div class="group">
+          <h3>Corner markers</h3>
+          <div class="shape-row" id="finder-shape"></div>
+          <div class="swatch-row" id="finder-ring"><span class="k">Ring</span></div>
+          <div class="swatch-row" id="finder-eye" style="margin-top:6px"><span class="k">Eye</span></div>
+          <p class="sub" style="margin:10px 0 0">Scanners find the code by these three. In tests they had to stay solid: an unbroken ring and a plain dark eye. <b>!</b> marks what failed.</p>
+        </div>
+
+        <div class="group">
+          <h3>Small markers</h3>
+          <p class="sub">The alignment patterns. A 1,500-byte code has 46 of them.</p>
+          <div class="shape-row" id="align-shape"></div>
+          <div class="swatch-row" id="align-ring"><span class="k">Ring</span></div>
+          <div class="swatch-row" id="align-eye" style="margin-top:6px"><span class="k">Eye</span></div>
+        </div>
+
+        <div class="group">
+          <h3>Pad behind corner markers</h3>
+          <div class="shape-row" id="pad"></div>
+        </div>
+      </div>
+
+      <div class="stagewrap">
+        <div class="facts" id="facts"></div>
+        <div class="preview"><div class="art" id="art" title="Open full screen"></div></div>
+        <div class="actions-row">
+          <button class="btn btn-primary" id="open">Full screen for scanning</button>
+          <button class="btn btn-ghost" id="png">PNG</button>
+          <button class="btn btn-ghost" id="svg">SVG</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sect">
+    <p class="eyebrow">One code per tier</p>
+    <h2>Tiers at their largest</h2>
+    <p class="lede">Each tier's densest code, with its dot size, error correction and your current markers. Click one to open it full screen and scan it.</p>
+    <div class="strip" id="tier-strip"></div>
+  </section>
+
+  <section class="sect">
+    <p class="eyebrow">Marker presets</p>
+    <h2>Same payload, different markers</h2>
+    <p class="lede">Every preset rendered with the current payload and checked. Click one to use it, then fine-tune it above.</p>
+    <div class="strip" id="preset-strip"></div>
+  </section>
+</div>
+
+<div class="scan" id="scan" role="dialog" aria-modal="true" aria-label="Full screen QR"><span class="hint">Click or Esc to close</span><div id="scan-art"></div></div>
+
+<script src="../shared/qr.js"></script>
+<script src="../shared/qr-art.js"></script>
+<script src="../shared/isolde-hd.js"></script>
+<script src="../shared/isolde-480.js"></script>
+<script>
+  const A = IsolQrArt;
+  const $ = id => document.getElementById(id);
+
+  const INKS = [
+    ["Aubergine", "#4A3B42"], ["Sepia", "#655844"], ["Olive", "#5E6950"], ["Madder", "#BC4D2D"],
+    ["Vermilion", "#EC4823"], ["Verdigris", "#528F8D"], ["Gilt", "#C19A4B"],
+  ];
+  const SHAPES = [["square", "Square"], ["rounded", "Rounded"], ["circle", "Circle"], ["leaf", "Leaf"], ["jewel", "Jewel"], ["beaded", "Beaded"], ["frame", "Triple rule"]];
+  const PADS = [["square", "Square"], ["rounded", "Rounded"], ["round", "Round"], ["none", "None"]];
+
+  // Contrast against Vellum, to flag weak marker colours.
+  const lum = h => { const [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(c => c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  const onVellum = h => (lum("#F2E2C4") + 0.05) / (lum(h) + 0.05);
+
+  // ── Settings (kept in this browser) ────────────────────────
+  const KEY = "isol-halftone-settings";
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const { name: _n, ...HOUSE } = A.MARKER_PRESETS.isol;
+  const DEFAULTS = { tiers: clone(A.TIERS), ...clone(HOUSE), preset: "isol", override: null, bytes: 207 };
+  let S = clone(DEFAULTS);
+  try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (e) {}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+  // Stable random filler per byte count, so thumbnails don't reshuffle on every change.
+  const ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  const fillers = {};
+  const textFor = n => fillers[n] ||= "isol:test:" + Array.from(crypto.getRandomValues(new Uint8Array(Math.max(0, n - 10))), x => ALPHA[x & 63]).join("");
+
+  function build(bytes, opts = {}) {
+    const text = textFor(bytes), level = A.levelFor(bytes);
+    const tier = A.tierFor(bytes, S.tiers), dot = opts.dot ?? (S.override ?? tier.dot);
+    const g = A.geometry(IsolQr.encode(text, level));
+    const svg = A.halftone(g, {
+      image: opts.small ? window.ISOLDE_JPG : window.ISOLDE_HD_JPG, dot,
+      finder: opts.finder || S.finder, align: opts.align || S.align, pad: opts.pad || S.pad,
+    });
+    return { text, level, tier, dot, g, svg, bytes };
+  }
+
+  function decodeAt(svgText, size, ppm) {
+    return new Promise(resolve => {
+      const img = new Image(), url = URL.createObjectURL(new Blob([svgText], { type: "image/svg+xml" }));
+      img.onload = () => {
+        const px = (size + 8) * ppm, cv = document.createElement("canvas"); cv.width = cv.height = px;
+        const ctx = cv.getContext("2d", { willReadFrequently: true }); ctx.drawImage(img, 0, 0, px, px); URL.revokeObjectURL(url);
+        let out = null; try { out = IsolQr.decode(ctx.getImageData(0, 0, px, px).data, px, px); } catch (e) {}
+        resolve(out);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    });
+  }
+  async function check(el, r, ppm) {
+    const out = await decodeAt(r.svg, r.g.size, ppm);
+    if (!el.isConnected) return;
+    const ok = out === r.text;
+    el.className = `pill ${ok ? "ok" : "bad"}`;
+    el.textContent = `${ok ? "✓" : "✗"} ${ppm} px`;
+  }
+
+  // ── Controls ───────────────────────────────────────────────
+  function buttons(el, items, current, onPick, risky = []) {
+    el.innerHTML = items.map(([v, l]) => `<button class="chipbtn${risky.includes(v) ? " risky" : ""}" data-v="${v}" aria-pressed="${v === current}"${risky.includes(v) ? ' title="Failed the decoder in tests"' : ""}>${l}</button>`).join("");
+    el.onclick = e => { const b = e.target.closest("button"); if (b) onPick(b.dataset.v); };
+  }
+  function swatches(el, current, onPick) {
+    const k = el.querySelector(".k").outerHTML;
+    el.innerHTML = k + INKS.map(([n, h]) => {
+      const c = onVellum(h), risky = A.RISK.inks.includes(h);
+      return `<button class="sw${risky ? " low" : ""}" style="background:${h}" data-v="${h}" aria-pressed="${h === current}" title="${n} · ${c.toFixed(1)}:1 on Vellum${risky ? " · failed the decoder in tests" : ""}"></button>`;
+    }).join("");
+    el.onclick = e => { const b = e.target.closest("button"); if (b) onPick(b.dataset.v); };
+  }
+  function custom(fn) { return v => { fn(v); S.preset = null; save(); refresh(); }; }
+
+  function renderControls() {
+    buttons($("finder-shape"), SHAPES, S.finder.shape, custom(v => S.finder.shape = v), A.RISK.finderShapes);
+    swatches($("finder-ring"), S.finder.ring, custom(v => S.finder.ring = v));
+    swatches($("finder-eye"), S.finder.eye, custom(v => S.finder.eye = v));
+    buttons($("align-shape"), SHAPES.filter(([v]) => v !== "frame"), S.align.shape, custom(v => S.align.shape = v));
+    swatches($("align-ring"), S.align.ring, custom(v => S.align.ring = v));
+    swatches($("align-eye"), S.align.eye, custom(v => S.align.eye = v));
+    buttons($("pad"), PADS, S.pad, custom(v => S.pad = v), A.RISK.pad);
+
+    const active = A.tierFor(S.bytes, S.tiers);
+    $("tiers").innerHTML = S.tiers.map((t, i) => {
+      const from = i ? S.tiers[i - 1].upTo + 1 : 1;
+      return `<div class="tier${t === active ? " active" : ""}">
+        <span class="n">${i + 1}</span>
+        <label>up to <input type="number" min="${from}" max="1500" value="${t.upTo}" data-i="${i}" data-k="upTo" aria-label="Tier ${i + 1} up to bytes"></label>
+        <label>dot <input type="number" min="0.2" max="0.7" step="0.05" value="${t.dot.toFixed(2)}" data-i="${i}" data-k="dot" aria-label="Tier ${i + 1} dot size"></label>
+        <span class="ec" title="Error correction for this tier's largest code">${A.levelFor(t.upTo)}</span>
+      </div>`;
+    }).join("");
+
+    $("bytes").value = S.bytes;
+    $("bytes-out").textContent = `${S.bytes.toLocaleString()} bytes`;
+    $("override-on").checked = S.override != null;
+    $("override-box").hidden = S.override == null;
+    if (S.override != null) { $("dot").value = S.override; $("dot-out").textContent = S.override.toFixed(2); }
+  }
+
+  // ── Renders ────────────────────────────────────────────────
+  let main = null, timer;
+  function renderMain() {
+    main = build(S.bytes);
+    $("art").innerHTML = main.svg;
+    const ti = S.tiers.indexOf(main.tier) + 1;
+    $("facts").innerHTML =
+      `<span><b>${S.bytes.toLocaleString()}</b> bytes</span><span>v<b>${main.g.version}</b> · <b>${main.g.size}²</b></span><span>level <b>${main.level}</b></span>` +
+      `<span class="pill tier">tier ${ti} · dot ${main.dot.toFixed(2)}${S.override != null ? " (override)" : ""}</span>` +
+      `<span class="pill wait" id="d8">8 px…</span><span class="pill wait" id="d3">3 px…</span>`;
+    check($("d8"), main, 8); check($("d3"), main, 3);
+  }
+
+  function renderTierStrip() {
+    const strip = $("tier-strip");
+    const items = S.tiers.map((t, i) => ({ i, r: build(t.upTo, { small: true, dot: S.override ?? t.dot }) }));
+    strip.innerHTML = items.map(({ i, r }) => `
+      <button class="thumb" data-bytes="${r.bytes}" title="Open full screen">
+        <div class="art">${r.svg}</div>
+        <div class="cap"><b>Tier ${i + 1} · up to ${r.bytes.toLocaleString()} B</b>
+          <small>v${r.g.version} · ${r.g.size}² · ${r.level} · dot ${r.dot.toFixed(2)}</small>
+          <span class="pill wait" data-c>3 px…</span></div>
+      </button>`).join("");
+    items.forEach(({ r }, k) => check(strip.children[k].querySelector("[data-c]"), r, 3));
+  }
+
+  function renderPresetStrip() {
+    const strip = $("preset-strip");
+    const items = Object.entries(A.MARKER_PRESETS).map(([key, p]) => ({ key, p, r: build(S.bytes, { small: true, finder: p.finder, align: p.align, pad: p.pad }) }));
+    strip.innerHTML = items.map(({ key, p, r }) => `
+      <button class="thumb${S.preset === key ? " current" : ""}" data-preset="${key}" title="Use ${p.name}">
+        <div class="art">${r.svg}</div>
+        <div class="cap"><b>${p.name}</b><small>${p.finder.shape} · ${p.align.shape} · ${p.pad} pad</small>
+          <span class="pill wait" data-c>3 px…</span></div>
+      </button>`).join("");
+    items.forEach(({ r }, k) => check(strip.children[k].querySelector("[data-c]"), r, 3));
+  }
+
+  function refresh({ strips = true } = {}) {
+    renderControls();
+    clearTimeout(timer);
+    timer = setTimeout(() => { renderMain(); if (strips) { renderTierStrip(); renderPresetStrip(); } }, 120);
+  }
+
+  // ── Events ─────────────────────────────────────────────────
+  $("bytes").addEventListener("input", e => { S.bytes = +e.target.value; $("bytes-out").textContent = `${S.bytes.toLocaleString()} bytes`; save(); clearTimeout(timer); timer = setTimeout(() => { renderControls(); renderMain(); renderPresetStrip(); }, 200); });
+  $("quick").onclick = e => { const b = e.target.closest("button"); if (!b) return; S.bytes = +b.dataset.b; save(); renderControls(); renderMain(); renderPresetStrip(); };
+  $("tiers").addEventListener("change", e => {
+    const i = +e.target.dataset.i, k = e.target.dataset.k; if (!k) return;
+    let v = +e.target.value;
+    if (k === "dot") v = Math.min(0.7, Math.max(0.2, v));
+    else v = Math.min(1500, Math.max(i ? S.tiers[i - 1].upTo + 1 : 16, Math.round(v)));
+    S.tiers[i][k] = v;
+    for (let j = i + 1; j < S.tiers.length; j++) S.tiers[j].upTo = Math.max(S.tiers[j].upTo, S.tiers[j - 1].upTo + 1);
+    S.tiers[S.tiers.length - 1].upTo = 1500;
+    save(); refresh();
+  });
+  $("tiers-reset").onclick = () => { S.tiers = clone(A.TIERS); save(); refresh(); };
+  $("override-on").onchange = e => { S.override = e.target.checked ? +$("dot").value : null; save(); refresh(); };
+  $("dot").addEventListener("input", e => { S.override = +e.target.value; $("dot-out").textContent = S.override.toFixed(2); save(); clearTimeout(timer); timer = setTimeout(() => { renderMain(); renderTierStrip(); renderPresetStrip(); }, 200); });
+  $("copy").onclick = async () => {
+    const { tiers, finder, align, pad, override } = S;
+    try { await navigator.clipboard.writeText(JSON.stringify({ tiers, finder, align, pad, override }, null, 2)); $("copy").textContent = "Copied"; } catch (e) { $("copy").textContent = "Copy failed"; }
+    setTimeout(() => ($("copy").textContent = "Copy all settings"), 1400);
+  };
+  $("preset-strip").onclick = e => {
+    const b = e.target.closest("[data-preset]"); if (!b) return;
+    const p = A.MARKER_PRESETS[b.dataset.preset];
+    Object.assign(S, clone({ finder: p.finder, align: p.align, pad: p.pad }), { preset: b.dataset.preset });
+    save(); refresh();
+  };
+
+  const openScan = svg => { $("scan-art").innerHTML = svg; $("scan").classList.add("open"); };
+  $("open").onclick = () => openScan(main.svg);
+  $("art").onclick = () => openScan(main.svg);
+  $("tier-strip").onclick = e => { const b = e.target.closest("[data-bytes]"); if (b) openScan(build(+b.dataset.bytes).svg); };
+  $("scan").onclick = () => $("scan").classList.remove("open");
+  document.addEventListener("keydown", e => { if (e.key === "Escape") $("scan").classList.remove("open"); });
+
+  function download(ext) {
+    const name = `isol-halftone-${main.bytes}B-${main.level}.${ext}`;
+    const go = blob => { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
+    if (ext === "svg") return go(new Blob([main.svg], { type: "image/svg+xml" }));
+    const img = new Image(), url = URL.createObjectURL(new Blob([main.svg], { type: "image/svg+xml" }));
+    img.onload = () => { const px = (main.g.size + 8) * 12, cv = document.createElement("canvas"); cv.width = cv.height = px; cv.getContext("2d").drawImage(img, 0, 0, px, px); URL.revokeObjectURL(url); cv.toBlob(go); };
+    img.src = url;
+  }
+  $("png").onclick = () => download("png");
+  $("svg").onclick = () => download("svg");
+
+  // Deep links for review: ?bytes=1500&preset=jewel
+  const p = new URLSearchParams(location.search);
+  if (p.get("bytes")) S.bytes = Math.min(1500, Math.max(16, +p.get("bytes")));
+  if (A.MARKER_PRESETS[p.get("preset")]) { const pr = A.MARKER_PRESETS[p.get("preset")]; Object.assign(S, clone({ finder: pr.finder, align: pr.align, pad: pr.pad }), { preset: p.get("preset") }); }
+  refresh();
+</script>
+</body>
+</html>

@@ -1,0 +1,1055 @@
+{
+  "version": 1,
+  "format": "hex",
+  "source": {
+    "title": "Isolde",
+    "artist": "Aubrey Beardsley",
+    "medium": "colour lithograph",
+    "printer": "W. Griggs",
+    "image": "2010.651_print.jpg",
+    "description": "A palette drawn from Aubrey Beardsley’s Isolde — vermilion ground, cream paper, verdigris jewels and the warm greys of lithographic ink."
+  },
+  "notes": {
+    "palette": "Fifteen colours in five families. Paper carries most surfaces, vermilion is the single loud voice, the earth greys do the drawing, and verdigris, gilt and aubergine add jewel-like detail.",
+    "weights": "weight is the relative share of a colour in a typical composition (sums to 107; used for the proportion strip).",
+    "labelOn": "Token to use for text/labels placed directly on this colour (whichever of color-1 / color-9 contrasts more).",
+    "pairings": "Recommended text-on-ground combinations, with WCAG 2.x contrast ratios computed from the palette values.",
+    "schemes": "Ready-made combinations. Each gives a colour to every role: ground, field, motif, accent, line and ink. Use them for avatars, cards, banners and illustrations.",
+    "contrastGrades": {
+      "AAA": ">= 7",
+      "AA": ">= 4.5",
+      "AA large": ">= 3",
+      "Decorative": "< 3"
+    }
+  },
+  "colors": [
+    {
+      "name": "color-1",
+      "value": "#F2E2C4",
+      "label": "Vellum",
+      "group": "paper",
+      "role": "Primary background",
+      "weight": 40,
+      "rgb": [
+        242,
+        226,
+        196
+      ],
+      "hsl": [
+        39,
+        64,
+        86
+      ],
+      "labelOn": "color-9"
+    },
+    {
+      "name": "color-2",
+      "value": "#EC4823",
+      "label": "Vermilion",
+      "group": "vermilion",
+      "role": "Signature accent, hero fields",
+      "weight": 22,
+      "rgb": [
+        236,
+        72,
+        35
+      ],
+      "hsl": [
+        11,
+        84,
+        53
+      ],
+      "labelOn": "color-1"
+    },
+    {
+      "name": "color-3",
+      "value": "#D9C4A5",
+      "label": "Parchment",
+      "group": "paper",
+      "role": "Raised surfaces, cards",
+      "weight": 8,
+      "rgb": [
+        217,
+        196,
+        165
+      ],
+      "hsl": [
+        36,
+        41,
+        75
+      ],
+      "labelOn": "color-9"
+    },
+    {
+      "name": "color-4",
+      "value": "#C7AE8D",
+      "label": "Linen",
+      "group": "paper",
+      "role": "Dividers, borders",
+      "weight": 5,
+      "rgb": [
+        199,
+        174,
+        141
+      ],
+      "hsl": [
+        34,
+        34,
+        67
+      ],
+      "labelOn": "color-9"
+    },
+    {
+      "name": "color-5",
+      "value": "#786B55",
+      "label": "Olive Umber",
+      "group": "earth",
+      "role": "Secondary text",
+      "weight": 3,
+      "rgb": [
+        120,
+        107,
+        85
+      ],
+      "hsl": [
+        38,
+        17,
+        40
+      ],
+      "labelOn": "color-1"
+    },
+    {
+      "name": "color-6",
+      "value": "#877A64",
+      "label": "Umber Grey",
+      "group": "earth",
+      "role": "Secondary icons",
+      "weight": 3,
+      "rgb": [
+        135,
+        122,
+        100
+      ],
+      "hsl": [
+        38,
+        15,
+        46
+      ],
+      "labelOn": "color-1"
+    },
+    {
+      "name": "color-7",
+      "value": "#A89C85",
+      "label": "Stone",
+      "group": "earth",
+      "role": "Disabled, placeholders",
+      "weight": 3,
+      "rgb": [
+        168,
+        156,
+        133
+      ],
+      "hsl": [
+        39,
+        17,
+        59
+      ],
+      "labelOn": "color-9"
+    },
+    {
+      "name": "color-8",
+      "value": "#988A73",
+      "label": "Taupe",
+      "group": "earth",
+      "role": "Fine linework",
+      "weight": 3,
+      "rgb": [
+        152,
+        138,
+        115
+      ],
+      "hsl": [
+        37,
+        15,
+        52
+      ],
+      "labelOn": "color-1"
+    },
+    {
+      "name": "color-9",
+      "value": "#655844",
+      "label": "Sepia Ink",
+      "group": "earth",
+      "role": "Body text, frames",
+      "weight": 3,
+      "rgb": [
+        101,
+        88,
+        68
+      ],
+      "hsl": [
+        36,
+        20,
+        33
+      ],
+      "labelOn": "color-1"
+    },
+    {
+      "name": "color-10",
+      "value": "#BC4D2D",
+      "label": "Madder",
+      "group": "vermilion",
+      "role": "Links, emphasis, hover",
+      "weight": 4,
+      "rgb": [
+        188,
+        77,
+        45
+      ],
+      "hsl": [
+        13,
+        61,
+        46
+      ],
+      "labelOn": "color-1"
+    },
+    {
+      "name": "color-11",
+      "value": "#528F8D",
+      "label": "Verdigris",
+      "group": "verdigris",
+      "role": "Secondary accent, wordmark",
+      "weight": 3,
+      "rgb": [
+        82,
+        143,
+        141
+      ],
+      "hsl": [
+        178,
+        27,
+        44
+      ],
+      "labelOn": "color-1"
+    },
+    {
+      "name": "color-12",
+      "value": "#7A8B76",
+      "label": "Sage",
+      "group": "verdigris",
+      "role": "Tags, soft highlights",
+      "weight": 2,
+      "rgb": [
+        122,
+        139,
+        118
+      ],
+      "hsl": [
+        109,
+        8,
+        50
+      ],
+      "labelOn": "color-1"
+    },
+    {
+      "name": "color-13",
+      "value": "#5E6950",
+      "label": "Olive",
+      "group": "verdigris",
+      "role": "Success, nature cues",
+      "weight": 2,
+      "rgb": [
+        94,
+        105,
+        80
+      ],
+      "hsl": [
+        86,
+        14,
+        36
+      ],
+      "labelOn": "color-1"
+    },
+    {
+      "name": "color-14",
+      "value": "#C19A4B",
+      "label": "Gilt",
+      "group": "gilt",
+      "role": "Ornament, badges, rules",
+      "weight": 3,
+      "rgb": [
+        193,
+        154,
+        75
+      ],
+      "hsl": [
+        40,
+        49,
+        53
+      ],
+      "labelOn": "color-9"
+    },
+    {
+      "name": "color-15",
+      "value": "#4A3B42",
+      "label": "Aubergine",
+      "group": "gilt",
+      "role": "Headlines, deepest ink",
+      "weight": 3,
+      "rgb": [
+        74,
+        59,
+        66
+      ],
+      "hsl": [
+        332,
+        11,
+        26
+      ],
+      "labelOn": "color-1"
+    }
+  ],
+  "groups": [
+    {
+      "key": "paper",
+      "title": "Paper",
+      "note": "Grounds and surfaces",
+      "tokens": [
+        "color-1",
+        "color-3",
+        "color-4"
+      ]
+    },
+    {
+      "key": "vermilion",
+      "title": "Vermilion",
+      "note": "The accent — use sparingly but boldly",
+      "tokens": [
+        "color-2",
+        "color-10"
+      ]
+    },
+    {
+      "key": "earth",
+      "title": "Earth",
+      "note": "Ink, line and type",
+      "tokens": [
+        "color-7",
+        "color-8",
+        "color-6",
+        "color-5",
+        "color-9"
+      ]
+    },
+    {
+      "key": "verdigris",
+      "title": "Verdigris",
+      "note": "The necklace and the lettering — a cool counterpoint",
+      "tokens": [
+        "color-11",
+        "color-12",
+        "color-13"
+      ]
+    },
+    {
+      "key": "gilt",
+      "title": "Gilt & Shadow",
+      "note": "Ornament and the deepest dark",
+      "tokens": [
+        "color-14",
+        "color-15"
+      ]
+    }
+  ],
+  "proportionLegend": [
+    {
+      "label": "Paper",
+      "groups": [
+        "paper"
+      ],
+      "weight": 53
+    },
+    {
+      "label": "Vermilion",
+      "groups": [
+        "vermilion"
+      ],
+      "weight": 26
+    },
+    {
+      "label": "Earth",
+      "groups": [
+        "earth"
+      ],
+      "weight": 15
+    },
+    {
+      "label": "Jewel",
+      "groups": [
+        "verdigris",
+        "gilt"
+      ],
+      "weight": 13
+    }
+  ],
+  "semantic": {
+    "paper": "color-1",
+    "ink": "color-9",
+    "rule": "color-9",
+    "accent": "color-2"
+  },
+  "typography": {
+    "fonts": {
+      "body": "\"Ubuntu\", system-ui, sans-serif",
+      "display": "\"Ubuntu\", system-ui, sans-serif",
+      "mono": "\"Ubuntu Mono\", ui-monospace, monospace",
+      "embedded": [
+        {
+          "family": "Ubuntu",
+          "weights": [
+            300,
+            400,
+            500,
+            700
+          ],
+          "styles": [
+            "normal",
+            "italic (400)"
+          ]
+        },
+        {
+          "family": "Ubuntu Mono",
+          "weights": [
+            400,
+            700
+          ],
+          "styles": [
+            "normal"
+          ]
+        }
+      ],
+      "licence": "Ubuntu Font Licence 1.0 (Latin subset, WOFF2)"
+    },
+    "scale": {
+      "body": {
+        "size": "17px",
+        "lineHeight": 1.5,
+        "mobileSize": "15px"
+      },
+      "hero": {
+        "size": "clamp(48px, 9vw, 96px)",
+        "weight": 300,
+        "letterSpacing": ".32em",
+        "lineHeight": 1,
+        "color": "color-1",
+        "on": "color-2"
+      },
+      "heroLede": {
+        "size": "19px",
+        "style": "italic",
+        "color": "color-1"
+      },
+      "h2": {
+        "size": "36px",
+        "mobileSize": "28px",
+        "weight": 500,
+        "lineHeight": 1.1
+      },
+      "h3": {
+        "size": "15px",
+        "weight": 600,
+        "letterSpacing": ".24em",
+        "transform": "uppercase"
+      },
+      "eyebrow": {
+        "size": "13px",
+        "weight": 600,
+        "letterSpacing": ".28em",
+        "transform": "uppercase",
+        "color": "color-10"
+      },
+      "lede": {
+        "maxWidth": "60ch"
+      },
+      "label": {
+        "size": "12px",
+        "letterSpacing": ".2em",
+        "transform": "uppercase"
+      },
+      "badge": {
+        "size": "11px",
+        "letterSpacing": ".14em",
+        "border": "1px solid currentColor",
+        "padding": "0 6px"
+      },
+      "mono": {
+        "size": "14–14.5px",
+        "lineHeight": 1.6,
+        "family": "mono"
+      },
+      "caption": {
+        "size": "13px",
+        "style": "italic"
+      }
+    }
+  },
+  "layout": {
+    "rule": "1.5px solid var(--rule)",
+    "softRule": "1px solid color-4",
+    "frame": {
+      "note": "Beardsley-style triple-rule frame",
+      "maxWidth": "1080px",
+      "css": {
+        "border": "1.5px solid var(--rule)",
+        "outline": "1.5px solid var(--rule)",
+        "outlineOffset": "5px",
+        "boxShadow": "0 0 0 11px var(--paper), 0 0 0 12.5px var(--rule)"
+      }
+    },
+    "heroCurtainLines": {
+      "note": "The two thin curtain lines from the print, drawn over the vermilion field",
+      "color": "color-3",
+      "width": "1.5px",
+      "opacity": 0.85,
+      "positions": [
+        "78%",
+        "90%"
+      ]
+    },
+    "section": {
+      "padding": "56px 40px",
+      "mobilePadding": "40px 20px"
+    },
+    "pagePadding": {
+      "desktop": "32px 16px 64px",
+      "mobile": "24px 16px 48px"
+    },
+    "breakpoint": "760px",
+    "focus": "2px solid color-10, offset 3px",
+    "hover": "translateY(-3px), .15s ease"
+  },
+  "pairings": [
+    {
+      "label": "Body text",
+      "sample": "Love’s potion",
+      "caps": false,
+      "background": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "foreground": {
+        "token": "color-9",
+        "name": "Sepia Ink",
+        "value": "#655844"
+      },
+      "contrast": 5.42,
+      "grade": "AA"
+    },
+    {
+      "label": "Hero title",
+      "sample": "ISOLDE",
+      "caps": true,
+      "background": {
+        "token": "color-2",
+        "name": "Vermilion",
+        "value": "#EC4823"
+      },
+      "foreground": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "contrast": 2.98,
+      "grade": "Decorative"
+    },
+    {
+      "label": "Accent text",
+      "sample": "Tristan & Isolde",
+      "caps": false,
+      "background": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "foreground": {
+        "token": "color-10",
+        "name": "Madder",
+        "value": "#BC4D2D"
+      },
+      "contrast": 3.88,
+      "grade": "AA large"
+    },
+    {
+      "label": "Card text",
+      "sample": "The goblet",
+      "caps": false,
+      "background": {
+        "token": "color-3",
+        "name": "Parchment",
+        "value": "#D9C4A5"
+      },
+      "foreground": {
+        "token": "color-9",
+        "name": "Sepia Ink",
+        "value": "#655844"
+      },
+      "contrast": 4.09,
+      "grade": "AA large"
+    },
+    {
+      "label": "Inverse",
+      "sample": "Chromo-lith",
+      "caps": false,
+      "background": {
+        "token": "color-9",
+        "name": "Sepia Ink",
+        "value": "#655844"
+      },
+      "foreground": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "contrast": 5.42,
+      "grade": "AA"
+    },
+    {
+      "label": "Button",
+      "sample": "BEGIN",
+      "caps": true,
+      "background": {
+        "token": "color-10",
+        "name": "Madder",
+        "value": "#BC4D2D"
+      },
+      "foreground": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "contrast": 3.88,
+      "grade": "AA large"
+    },
+    {
+      "label": "Wordmark",
+      "sample": "ISOLDE",
+      "caps": true,
+      "background": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "foreground": {
+        "token": "color-11",
+        "name": "Verdigris",
+        "value": "#528F8D"
+      },
+      "contrast": 2.9,
+      "grade": "Decorative"
+    },
+    {
+      "label": "Headline",
+      "sample": "Act the first",
+      "caps": false,
+      "background": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "foreground": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "contrast": 8.24,
+      "grade": "AAA"
+    },
+    {
+      "label": "Ornament",
+      "sample": "The chalice",
+      "caps": false,
+      "background": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "foreground": {
+        "token": "color-14",
+        "name": "Gilt",
+        "value": "#C19A4B"
+      },
+      "contrast": 4,
+      "grade": "AA large"
+    },
+    {
+      "label": "Inverse alt",
+      "sample": "Cornwall",
+      "caps": false,
+      "background": {
+        "token": "color-13",
+        "name": "Olive",
+        "value": "#5E6950"
+      },
+      "foreground": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "contrast": 4.55,
+      "grade": "AA"
+    }
+  ],
+  "schemes": [
+    {
+      "key": "vermilion",
+      "name": "Vermilion curtain",
+      "ground": {
+        "token": "color-2",
+        "name": "Vermilion",
+        "value": "#EC4823"
+      },
+      "field": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "motif": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "accent": {
+        "token": "color-11",
+        "name": "Verdigris",
+        "value": "#528F8D"
+      },
+      "line": {
+        "token": "color-3",
+        "name": "Parchment",
+        "value": "#D9C4A5"
+      },
+      "ink": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "inkOnGround": {
+        "contrast": 2.77,
+        "grade": "Decorative"
+      }
+    },
+    {
+      "key": "vellum",
+      "name": "Vellum",
+      "ground": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "field": {
+        "token": "color-3",
+        "name": "Parchment",
+        "value": "#D9C4A5"
+      },
+      "motif": {
+        "token": "color-2",
+        "name": "Vermilion",
+        "value": "#EC4823"
+      },
+      "accent": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "line": {
+        "token": "color-9",
+        "name": "Sepia Ink",
+        "value": "#655844"
+      },
+      "ink": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "inkOnGround": {
+        "contrast": 8.24,
+        "grade": "AAA"
+      }
+    },
+    {
+      "key": "aubergine",
+      "name": "Aubergine night",
+      "ground": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "field": {
+        "token": "color-9",
+        "name": "Sepia Ink",
+        "value": "#655844"
+      },
+      "motif": {
+        "token": "color-14",
+        "name": "Gilt",
+        "value": "#C19A4B"
+      },
+      "accent": {
+        "token": "color-2",
+        "name": "Vermilion",
+        "value": "#EC4823"
+      },
+      "line": {
+        "token": "color-4",
+        "name": "Linen",
+        "value": "#C7AE8D"
+      },
+      "ink": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "inkOnGround": {
+        "contrast": 8.24,
+        "grade": "AAA"
+      }
+    },
+    {
+      "key": "verdigris",
+      "name": "Verdigris",
+      "ground": {
+        "token": "color-11",
+        "name": "Verdigris",
+        "value": "#528F8D"
+      },
+      "field": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "motif": {
+        "token": "color-2",
+        "name": "Vermilion",
+        "value": "#EC4823"
+      },
+      "accent": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "line": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "ink": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "inkOnGround": {
+        "contrast": 2.84,
+        "grade": "Decorative"
+      }
+    },
+    {
+      "key": "olive",
+      "name": "Olive grove",
+      "ground": {
+        "token": "color-13",
+        "name": "Olive",
+        "value": "#5E6950"
+      },
+      "field": {
+        "token": "color-12",
+        "name": "Sage",
+        "value": "#7A8B76"
+      },
+      "motif": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "accent": {
+        "token": "color-14",
+        "name": "Gilt",
+        "value": "#C19A4B"
+      },
+      "line": {
+        "token": "color-3",
+        "name": "Parchment",
+        "value": "#D9C4A5"
+      },
+      "ink": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "inkOnGround": {
+        "contrast": 4.55,
+        "grade": "AA"
+      }
+    },
+    {
+      "key": "madder",
+      "name": "Madder",
+      "ground": {
+        "token": "color-10",
+        "name": "Madder",
+        "value": "#BC4D2D"
+      },
+      "field": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "motif": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "accent": {
+        "token": "color-14",
+        "name": "Gilt",
+        "value": "#C19A4B"
+      },
+      "line": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "ink": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "inkOnGround": {
+        "contrast": 3.88,
+        "grade": "AA large"
+      }
+    },
+    {
+      "key": "parchment",
+      "name": "Parchment",
+      "ground": {
+        "token": "color-3",
+        "name": "Parchment",
+        "value": "#D9C4A5"
+      },
+      "field": {
+        "token": "color-4",
+        "name": "Linen",
+        "value": "#C7AE8D"
+      },
+      "motif": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "accent": {
+        "token": "color-2",
+        "name": "Vermilion",
+        "value": "#EC4823"
+      },
+      "line": {
+        "token": "color-9",
+        "name": "Sepia Ink",
+        "value": "#655844"
+      },
+      "ink": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "inkOnGround": {
+        "contrast": 6.21,
+        "grade": "AA"
+      }
+    },
+    {
+      "key": "sepia",
+      "name": "Sepia ink",
+      "ground": {
+        "token": "color-9",
+        "name": "Sepia Ink",
+        "value": "#655844"
+      },
+      "field": {
+        "token": "color-5",
+        "name": "Olive Umber",
+        "value": "#786B55"
+      },
+      "motif": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "accent": {
+        "token": "color-11",
+        "name": "Verdigris",
+        "value": "#528F8D"
+      },
+      "line": {
+        "token": "color-4",
+        "name": "Linen",
+        "value": "#C7AE8D"
+      },
+      "ink": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "inkOnGround": {
+        "contrast": 5.42,
+        "grade": "AA"
+      }
+    },
+    {
+      "key": "gilt",
+      "name": "Gilt",
+      "ground": {
+        "token": "color-14",
+        "name": "Gilt",
+        "value": "#C19A4B"
+      },
+      "field": {
+        "token": "color-1",
+        "name": "Vellum",
+        "value": "#F2E2C4"
+      },
+      "motif": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "accent": {
+        "token": "color-10",
+        "name": "Madder",
+        "value": "#BC4D2D"
+      },
+      "line": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "ink": {
+        "token": "color-15",
+        "name": "Aubergine",
+        "value": "#4A3B42"
+      },
+      "inkOnGround": {
+        "contrast": 4,
+        "grade": "AA large"
+      }
+    }
+  ],
+  "schemeRoles": {
+    "ground": "Background of the whole piece",
+    "field": "Large secondary shape (horizon / lower field)",
+    "motif": "Primary figure (sun, emblem)",
+    "accent": "Small jewel detail",
+    "line": "Thin rules, curtain lines, ornaments",
+    "ink": "Text / lettering, haloed by the ground colour"
+  }
+}

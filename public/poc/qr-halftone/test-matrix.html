@@ -1,0 +1,42 @@
+<!doctype html><meta charset="utf-8"><title>Halftone QR test matrix</title>
+<!-- Decodes every marker preset (or, with ?mode=inks, every ink in every marker role) at several payload sizes,
+     at 8 and 3 px per module. Options: ?sizes=40,207,800,1500  ?only=classic,jewel  ?mode=inks -->
+<body style="font:15px/1.4 monospace;background:#F2E2C4;color:#4A3B42"><pre id="out">running…</pre>
+<script src="../shared/qr.js"></script><script src="../shared/qr-art.js"></script><script src="../shared/isolde-480.js"></script>
+<script>
+const A = IsolQrArt;
+const ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+const text = n => "isol:test:" + Array.from({length: n - 10}, (_, i) => ALPHA[(i * 37 + n) & 63]).join("");
+function dec(svg, size, ppm) { return new Promise(res => { const img = new Image(), url = URL.createObjectURL(new Blob([svg], {type: "image/svg+xml"}));
+  img.onload = () => { const px = (size + 8) * ppm, cv = document.createElement("canvas"); cv.width = cv.height = px; const c = cv.getContext("2d"); c.drawImage(img, 0, 0, px, px); res(IsolQr.decode(c.getImageData(0, 0, px, px).data, px, px)); }; img.src = url; }); }
+(async () => {
+  const sizes = (new URLSearchParams(location.search).get("sizes") || "40,207,800,1500").split(",").map(Number);
+  const only = new URLSearchParams(location.search).get("only");
+  let lines = ["preset      " + sizes.map(s => String(s).padStart(10)).join("")];
+  const AUB = "#4A3B42";
+  const INKS = { aub: "#4A3B42", sep: "#655844", oli: "#5E6950", mad: "#BC4D2D", verm: "#EC4823", verd: "#528F8D", gilt: "#C19A4B" };
+  const base = () => ({ finder: { shape: "square", ring: AUB, eye: AUB }, align: { shape: "square", ring: AUB, eye: AUB }, pad: "square" });
+  let V = A.MARKER_PRESETS;
+  if (new URLSearchParams(location.search).get("mode") === "inks") {
+    V = {};
+    for (const [n, h] of Object.entries(INKS)) {
+      let v = base(); v.finder.ring = h; V["fRing " + n] = v;
+      v = base(); v.finder.eye = h; V["fEye " + n] = v;
+      v = base(); v.align.ring = h; V["aRing " + n] = v;
+      v = base(); v.align.eye = h; V["aEye " + n] = v;
+    }
+  }
+  for (const [k, p] of Object.entries(V)) {
+    if (only && !only.split(",").includes(k)) continue;
+    let row = k.padEnd(14);
+    for (const n of sizes) {
+      const t = text(n), g = A.geometry(IsolQr.encode(t, A.levelFor(n)));
+      const svg = A.halftone(g, { image: window.ISOLDE_JPG, dot: A.tierFor(n).dot, finder: p.finder, align: p.align, pad: p.pad });
+      const r8 = (await dec(svg, g.size, 8)) === t, r3 = (await dec(svg, g.size, 3)) === t;
+      row += `   ${r8 ? "✓" : "✗"}8 ${r3 ? "✓" : "✗"}3`;
+    }
+    lines.push(row);
+  }
+  document.getElementById("out").textContent = lines.join("\n") + "\nDONE";
+})();
+</script>

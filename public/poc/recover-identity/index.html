@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recover Identity POC</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/components.css">
+<style>
+  /* Component: recover identity (.rcv). Twelve words in, the same identity out. */
+  .rcv .card-head p { max-width: 58ch; }
+
+  .wordgrid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 10px; }
+  .wordgrid li { display: flex; align-items: center; gap: 8px; padding: 0 10px; height: 42px; border: 1px solid rgba(199,174,141,.4); border-radius: var(--r-sm); position: relative; transition: border-color .15s, background .15s; }
+  .wordgrid li:focus-within { border-color: var(--color-14); background: rgba(242,226,196,.06); }
+  .wordgrid li.ok { border-color: rgba(122,139,118,.75); }
+  .wordgrid li.bad { border-color: var(--color-2); }
+  .wordgrid .n { font-family: var(--font-mono); font-size: 13px; color: var(--secret-ornament); min-width: 2ch; text-align: right; user-select: none; }
+  .wordgrid input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; outline: none; color: var(--secret-ink); font-family: var(--font-mono); font-size: 18px; padding: 0; }
+  .wordgrid input::placeholder { color: rgba(199,174,141,.35); }
+  .wordgrid .mark { width: 16px; height: 16px; flex: none; }
+  .wordgrid li.ok .mark { color: var(--color-12); } .wordgrid li.bad .mark { color: var(--color-2); }
+  .hidden-words .wordgrid input { -webkit-text-security: disc; }
+
+  .assist { min-height: 34px; margin-top: 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; color: var(--secret-dim); }
+  .assist:empty { display: none; }
+  .assist button { height: 28px; padding: 0 11px; border-radius: 999px; border: 1px solid rgba(199,174,141,.5); background: none; color: var(--secret-ink); font-family: var(--font-mono); font-size: 14px; cursor: pointer; }
+  .assist button:hover, .assist button:first-of-type { background: rgba(242,226,196,.12); }
+  .assist .err { color: #f19a7f; }
+
+  .result { margin-top: 16px; }
+  .result .who { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .result .who .k { font-family: var(--font-mono); font-size: 19px; color: var(--text); }
+  .result .who small { display: block; font-size: 14px; color: var(--text-muted); }
+  .status { display: flex; align-items: flex-start; gap: 10px; margin-top: 16px; padding: 12px 14px; border-radius: var(--r-sm); border: var(--line) solid; border-left-width: 6px; font-size: 15px; }
+  .status svg.i { flex: none; width: 20px; height: 20px; margin-top: 1px; }
+  .status b { display: block; font-weight: 500; }
+  .status.warn { border-color: var(--color-10); } .status.warn svg.i { color: var(--color-10); }
+  .status.info { border-color: var(--color-11); } .status.info svg.i { color: var(--color-11); }
+
+  .gets { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+  .gets div { padding: 12px 14px; border-radius: var(--r-sm); background: var(--color-3); font-size: 14.5px; }
+  .gets h4 { margin: 0 0 6px; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
+  .gets .yes h4 { color: var(--color-13); } .gets .no h4 { color: var(--color-10); }
+  .gets ul { margin: 0; padding-left: 18px; color: var(--text); }
+  .gets li + li { margin-top: 2px; }
+
+  .done { display: grid; justify-items: center; text-align: center; gap: 8px; padding: 18px 0 6px; }
+  .done .seal { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--color-13); color: var(--color-1); box-shadow: 0 0 0 4px var(--color-1), 0 0 0 5.5px var(--color-13); }
+  .done .seal svg.i { width: 30px; height: 30px; stroke-width: 2.2; }
+  .done h3 { margin: 10px 0 0; font-size: 24px; font-weight: 500; }
+  .done p { margin: 0; color: var(--text-muted); max-width: 46ch; }
+  .done code { font-family: var(--font-mono); font-size: 16px; color: var(--text); }
+
+  .rcv.narrow .wordgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rcv.narrow .gets { grid-template-columns: 1fr; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+  <symbol id="i-paste" viewBox="0 0 24 24"><rect x="6" y="4.5" width="12" height="16" rx="1.5"/><path d="M9.5 4.5V3h5v1.5M9 10h6M9 13.5h6M9 17h3.5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.2v.3"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l2 2"/></symbol>
+</svg>
+
+<div class="frame">
+  <header class="masthead">
+    <a href="../index.html">← Isol POCs</a>
+    <h1>Recover identity</h1>
+    <p>Type the twelve recovery words and become the same identity again. The words bring back who you are on the network, not your messages.</p>
+  </header>
+
+  <section class="sect">
+    <div class="toolbar">
+      <div><span class="lbl">State</span>
+        <div class="segmented" role="group" aria-label="State" id="state-ctl">
+          <button data-v="empty" aria-pressed="true">Empty</button>
+          <button data-v="typing" aria-pressed="false">Typing</button>
+          <button data-v="order" aria-pressed="false">Wrong order</button>
+          <button data-v="valid" aria-pressed="false">Valid</button>
+          <button data-v="done" aria-pressed="false">Recovered</button>
+        </div>
+      </div>
+      <div><span class="lbl">Width</span>
+        <div class="segmented" role="group" aria-label="Width" id="width-ctl">
+          <button data-v="wide" aria-pressed="true">Wide</button>
+          <button data-v="phone" aria-pressed="false">Phone</button>
+        </div>
+      </div>
+    </div>
+    <div class="stage" id="stage" data-width="wide">
+      <article class="card rcv" id="rcv" aria-labelledby="rcv-title"></article>
+    </div>
+  </section>
+
+  <section class="sect">
+    <p class="eyebrow">Design notes</p>
+    <h2>Why it looks like this</h2>
+    <div class="notes">
+      <div><h3>Same plate as Create identity</h3><p>The words are typed onto the same dark "Keep secret" plate they were shown on, in the same numbered grid. Recovering should feel like the mirror of creating.</p></div>
+      <div><h3>Helps word by word</h3><p>Each field checks itself against the 2048 recovery words: a green tick when it's one, a red mark when it isn't. While you type, matching words appear below; Tab or Enter takes the first.</p></div>
+      <div><h3>Paste the whole phrase</h3><p>Pasting twelve words into any field spreads them across the grid. Words can be hidden while typing in public.</p></div>
+      <div><h3>Order matters, and it says so</h3><p>Twelve real words can still be wrong together. The last word carries a checksum, so a swapped pair is caught: "these words don't fit together" points at order and spelling.</p></div>
+      <div><h3>See who you'll be</h3><p>Before confirming, the public key the words make is shown. If you know your key, you can tell it's the right identity before going on.</p></div>
+      <div><h3>Honest about what comes back</h3><p>Two short lists: what you get back (the identity, being recognised by people who know your key) and what you don't (messages, contacts, settings).</p></div>
+    </div>
+  </section>
+</div>
+
+<script src="../shared/identity-crypto.js"></script>
+<script>
+  const $ = id => document.getElementById(id);
+  const root = $("rcv"), stage = $("stage");
+  const icon = (id, cls = "") => `<svg class="i ${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+  const WORDS = IsolCrypto.wordlist, SET = new Set(WORDS);
+  const SAMPLE = "leader monkey parrot ring guide accident before fence cannon height naive bean".split(" ");
+  const groups = hex => hex.match(/.{4}/g).map(g => `<span>${g}</span>`).join("");
+  const short = k => `${k.slice(0, 8)}…${k.slice(-8)}`;
+
+  const S = { words: Array(12).fill(""), focus: -1, hide: false, done: null };
+
+  const clean = w => w.trim().toLowerCase();
+  const stateOf = w => !clean(w) ? "" : SET.has(clean(w)) ? "ok" : WORDS.some(x => x.startsWith(clean(w))) ? "partial" : "bad";
+  const suggestions = w => { const p = clean(w); return p ? WORDS.filter(x => x.startsWith(p) && x !== p).slice(0, 5) : []; };
+
+  function verdict() {
+    const filled = S.words.filter(w => clean(w)).length;
+    const allKnown = S.words.every(w => SET.has(clean(w)));
+    if (filled < 12 || !allKnown) return { kind: "incomplete", filled };
+    const phrase = S.words.map(clean).join(" ");
+    if (!IsolCrypto.isMnemonic(phrase)) return { kind: "order" };
+    return { kind: "valid", identity: IsolCrypto.fromMnemonic(phrase) };
+  }
+
+  function assistHtml() {
+    const i = S.focus, w = i >= 0 ? S.words[i] : "";
+    if (i >= 0 && stateOf(w) === "bad") return `<span class="err">“${clean(w)}” isn't one of the recovery words.</span>`;
+    const sug = i >= 0 ? suggestions(w) : [];
+    if (sug.length) return `<span>Word ${i + 1}:</span>${sug.map(s => `<button data-act="pick" data-w="${s}">${s}</button>`).join("")}`;
+    const v = verdict();
+    if (v.kind === "incomplete") return `<span>${v.filled} of 12 words</span>`;
+    return "";
+  }
+
+  function render({ keepFocus = true } = {}) {
+    root.classList.toggle("narrow", stage.dataset.width === "phone" || root.clientWidth < 560);
+    const active = document.activeElement, pos = active?.dataset?.i != null ? [ +active.dataset.i, active.selectionStart ] : null;
+
+    if (S.done) {
+      root.innerHTML = `
+        <header class="card-head"><div class="kicker">Identity</div><h2 id="rcv-title">Recover identity</h2></header>
+        <div class="card-body"><div class="done">
+          <div class="seal">${icon("check")}</div><h3>You're back</h3>
+          <code>${short(S.done.publicKey)}</code>
+          <p>People who know this key will recognise you. Your old messages aren't here: they stay on the devices that had them.</p>
+        </div></div>
+        <footer class="card-foot"><span></span><div class="buttons"><button class="btn btn-accent">Continue</button></div></footer>`;
+      return;
+    }
+
+    const v = verdict();
+    root.innerHTML = `
+      <header class="card-head">
+        <div class="kicker">Identity</div>
+        <h2 id="rcv-title">Recover identity</h2>
+        <p>Type your twelve recovery words in order. They make the same keys, so you'll be the same identity on the network.</p>
+      </header>
+      <div class="card-body">
+        <div class="plate secret${S.hide ? " hidden-words" : ""}">
+          <div class="plate-head">
+            <h3>Recovery words</h3><span class="tag keep">Secret</span><span class="meta">12 words</span>
+            <div class="actions">
+              <button class="btn btn-sm" data-act="hide" aria-pressed="${S.hide}">${icon(S.hide ? "eye" : "eye-off")}<span class="lbl">${S.hide ? "Show" : "Hide"}</span></button>
+              <button class="btn btn-sm" data-act="paste">${icon("paste")}<span class="lbl">Paste</span></button>
+            </div>
+          </div>
+          <div class="plate-body">
+            <ol class="wordgrid">
+              ${S.words.map((w, i) => { const st = stateOf(w), cls = st === "ok" ? "ok" : st === "bad" ? "bad" : "";
+                return `<li class="${cls}"><span class="n">${i + 1}</span><input data-i="${i}" value="${w}" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Word ${i + 1}" ${i === 0 && !S.words[0] ? 'placeholder="first word"' : ""}>${cls ? icon(cls === "ok" ? "check" : "x", "mark") : ""}</li>`; }).join("")}
+            </ol>
+            <div class="assist" aria-live="polite">${assistHtml()}</div>
+          </div>
+        </div>
+
+        ${v.kind === "order" ? `<div class="status warn">${icon("alert")}<span><b>These words don't fit together</b>All twelve are real words, but not in this order or with this spelling. Check them against where you wrote them down.</span></div>` : ""}
+
+        ${v.kind === "valid" ? `<div class="plate public result" style="margin-top:16px">
+            <div class="plate-head"><h3>You'll be this identity</h3><span class="tag share">Public key</span></div>
+            <div class="plate-body"><div class="hex">${groups(v.identity.publicKey)}</div></div>
+          </div>` : ""}
+
+        <div class="gets">
+          <div class="yes"><h4>You get back</h4><ul><li>Your identity and keys</li><li>Being recognised by people who know your key</li></ul></div>
+          <div class="no"><h4>Not in the words</h4><ul><li>Messages and photos</li><li>Contacts and the names you gave them</li><li>Settings</li></ul></div>
+        </div>
+      </div>
+      <footer class="card-foot">
+        <span class="card-note" style="margin:0">Lost the words? Then this identity can't be recovered.</span>
+        <div class="buttons">
+          <button class="btn btn-ghost" data-act="clear">Clear</button>
+          <button class="btn btn-accent" data-act="recover" ${v.kind === "valid" ? "" : "disabled"}>${icon("key")}Recover</button>
+        </div>
+      </footer>`;
+
+    if (keepFocus && pos) { const el = root.querySelector(`input[data-i="${pos[0]}"]`); if (el) { el.focus(); el.setSelectionRange(pos[1], pos[1]); } }
+  }
+
+  // Spread a pasted phrase across the fields, starting at field `from`.
+  function spread(text, from = 0) {
+    const parts = text.toLowerCase().split(/[\s,;]+/).map(s => s.replace(/^\d+[.)]?/, "")).filter(Boolean);
+    parts.slice(0, 12 - from).forEach((w, k) => S.words[from + k] = w);
+    S.focus = Math.min(11, from + parts.length - 1);
+  }
+
+  root.addEventListener("input", e => {
+    const i = e.target.dataset.i; if (i == null) return;
+    const v = e.target.value;
+    if (/\s/.test(v.trim())) { spread(v, +i); render({ keepFocus: false }); root.querySelector(`input[data-i="${S.focus}"]`)?.focus(); return; }
+    S.words[+i] = v.trim(); S.focus = +i;
+    render();
+  });
+  root.addEventListener("focusin", e => { if (e.target.dataset.i != null) { S.focus = +e.target.dataset.i; root.querySelector(".assist").innerHTML = assistHtml(); } });
+  root.addEventListener("keydown", e => {
+    const i = e.target.dataset.i; if (i == null) return;
+    const next = () => root.querySelector(`input[data-i="${+i + 1}"]`)?.focus();
+    if ((e.key === "Tab" && !e.shiftKey) || e.key === "Enter" || e.key === " ") {
+      const sug = suggestions(S.words[+i]);
+      if (sug.length && stateOf(S.words[+i]) !== "ok") { e.preventDefault(); S.words[+i] = sug[0]; render({ keepFocus: false }); next() || root.querySelector(`input[data-i="${i}"]`)?.focus(); return; }
+      if (e.key !== "Tab") { e.preventDefault(); next(); }
+    }
+    if (e.key === "Backspace" && !e.target.value && +i > 0) { e.preventDefault(); root.querySelector(`input[data-i="${+i - 1}"]`)?.focus(); }
+  });
+  root.addEventListener("click", async e => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const a = b.dataset.act;
+    if (a === "pick") { S.words[S.focus] = b.dataset.w; const n = S.focus + 1; render({ keepFocus: false }); root.querySelector(`input[data-i="${Math.min(11, n)}"]`)?.focus(); }
+    else if (a === "hide") { S.hide = !S.hide; render(); }
+    else if (a === "paste") { try { spread(await navigator.clipboard.readText(), 0); } catch (err) {} render({ keepFocus: false }); }
+    else if (a === "clear") { S.words = Array(12).fill(""); S.focus = -1; render({ keepFocus: false }); root.querySelector('input[data-i="0"]').focus(); }
+    else if (a === "recover") { const v = verdict(); if (v.kind === "valid") { S.done = v.identity; press("done"); render(); } }
+  });
+
+  // POC toolbar
+  function press(v) { $("state-ctl").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === v)); }
+  function setState(v) {
+    S.done = null; S.focus = -1;
+    if (v === "empty") S.words = Array(12).fill("");
+    if (v === "typing") { S.words = [...SAMPLE.slice(0, 4), "gui", "acident", ...Array(6).fill("")]; S.focus = 4; }
+    if (v === "order") { S.words = [...SAMPLE]; [S.words[10], S.words[11]] = [S.words[11], S.words[10]]; }
+    if (v === "valid") S.words = [...SAMPLE];
+    if (v === "done") S.done = IsolCrypto.fromMnemonic(SAMPLE.join(" "));
+    press(v); render({ keepFocus: false });
+    if (v === "typing") { const el = root.querySelector('input[data-i="4"]'); el.focus(); el.setSelectionRange(3, 3); }
+  }
+  $("state-ctl").addEventListener("click", e => { const v = e.target.closest("button")?.dataset.v; if (v) setState(v); });
+  $("width-ctl").addEventListener("click", e => {
+    const v = e.target.closest("button")?.dataset.v; if (!v) return;
+    stage.dataset.width = v; $("width-ctl").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === v)); render({ keepFocus: false });
+  });
+  new ResizeObserver(() => { const n = stage.dataset.width === "phone" || root.clientWidth < 560; if (n !== root.classList.contains("narrow")) render({ keepFocus: false }); }).observe(root);
+
+  const q = new URLSearchParams(location.search);
+  if (q.get("width") === "phone") { stage.dataset.width = "phone"; $("width-ctl").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === "phone")); }
+  setState(q.get("state") || "empty");
+</script>
+</body>
+</html>

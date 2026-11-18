@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Identity Representation POC</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/components.css">
+<link rel="stylesheet" href="../shared/identity.css">
+<style>
+  .frame { max-width: 1280px; }
+  .who-ctl { display: flex; flex-wrap: wrap; gap: 6px; }
+  .who-ctl button { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px 0 4px; border: 1px solid var(--rule-soft); border-radius: 999px; background: none; cursor: pointer; font: inherit; font-size: 14px; color: var(--text); }
+  .who-ctl button[aria-pressed=true] { border-color: var(--color-15); box-shadow: inset 0 0 0 1px var(--color-15); background: var(--color-3); }
+  .who-ctl small { color: var(--text-muted); font-size: 12.5px; }
+
+  .pieces { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 18px; align-items: start; }
+  .piece { border: var(--line) solid var(--rule-soft); border-radius: 12px; background: var(--color-1); overflow: hidden; }
+  .piece.wide { grid-column: 1 / -1; }
+  .piece > header { padding: 12px 14px 10px; border-bottom: 1px solid var(--rule-soft); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .piece > header h3 { margin: 0; font-size: 15px; font-weight: 500; }
+  .piece > header code { font-family: var(--font-mono); font-size: 12.5px; color: var(--accent-strong); }
+  .piece .show { padding: 18px 14px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; min-width: 0; }
+  .piece .show.col { flex-direction: column; align-items: stretch; }
+  .piece .show.center { justify-content: center; }
+  .piece .use { padding: 10px 14px 12px; border-top: 1px solid var(--rule-soft); background: rgba(217,196,165,.35); font-size: 13.5px; color: var(--text-muted); }
+  .piece .use b { color: var(--text); font-weight: 500; }
+  .lbl2 { font-family: var(--font-display); font-size: 10.5px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--text-faint); }
+  .kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 14px; align-items: center; width: 100%; }
+  .sentence { font-size: 16px; line-height: 1.9; }
+  .feedline { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); flex-wrap: wrap; }
+  .feedline .board { font-family: var(--font-display); font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--color-10); }
+  .chathead { width: 100%; padding: 10px 12px; border: 1px solid var(--rule-soft); border-radius: 10px; }
+
+  /* Everyone at a glance */
+  .glance { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  .glance th { text-align: left; font-family: var(--font-display); font-size: 10.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--text-muted); padding: 8px 10px; border-bottom: var(--line) solid var(--rule-soft); }
+  .glance td { padding: 6px 10px; border-bottom: 1px solid rgba(199,174,141,.5); vertical-align: middle; }
+  .glance tr.sel td { background: rgba(217,196,165,.45); }
+  .glance td.case { color: var(--text-muted); font-size: 13.5px; }
+  .glance .id-row { padding: 4px 0; }
+  .glance-wrap { overflow-x: auto; }
+  .rules-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px 28px; margin-bottom: 26px; }
+  .rules-grid div { font-size: 14.5px; color: var(--text-muted); }
+  .rules-grid b { display: block; color: var(--text); font-weight: 500; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<div class="frame">
+  <header class="masthead">
+    <a href="../index.html">← Isol POCs</a>
+    <h1>Identity</h1>
+    <p>Every way an identity is shown, yours or anyone else's, in one place. New screens use these pieces instead of inventing new ones.</p>
+  </header>
+
+  <section class="sect">
+    <p class="eyebrow">The rules</p>
+    <h2>One identity, one way of showing it</h2>
+    <div class="rules-grid">
+      <div><b>The key is who it is</b>Every piece shows the key, or can reach it in one tap: short key, key colours, or the full key.</div>
+      <div><b>Names, in this order</b>"You" for yourself · the name you gave them · their own name in “quotes” · the short key when there's no name at all.</div>
+      <div><b>Quotes mean "they say so"</b>A name you haven't confirmed is always quoted. Only names you chose appear bare.</div>
+      <div><b>Vermilion is yours</b>Your avatar is always Vermilion, with the curtain lines from the print. No one else's avatar ever is, so you can't be confused with anyone in a list, a search or a comparison.</div>
+      <div><b>Avatars can be copied, key colours can't</b>The avatar colour comes from the first characters of a key, which a look-alike can match. Key colours read the whole key, so they always tell two keys apart.</div>
+      <div><b>Marks travel with the name</b>Gilt seal for verified, Olive heart for trusted, Madder warning for a look-alike, everywhere the name appears.</div>
+    </div>
+
+    <p class="eyebrow">Everyone at a glance</p>
+    <h2>The same rules, every case</h2>
+    <p class="lede">Each row is a different relationship. Click one to see all its pieces below.</p>
+    <div class="glance-wrap"><table class="glance" id="glance"></table></div>
+  </section>
+
+  <section class="sect">
+    <div class="toolbar" style="margin-bottom:18px">
+      <div><span class="lbl">Showing</span><div class="who-ctl" id="who-ctl"></div></div>
+    </div>
+    <div class="pieces" id="pieces"></div>
+  </section>
+</div>
+
+<script src="../shared/isol-qr.global.js"></script>
+<script src="../shared/identity.js"></script>
+<script>
+  IsolId.ensureSprite();
+  const I = IsolId, $ = id => document.getElementById(id);
+  const ISOLDE = { key: "e8bcf3823669444d0b49ad45d65088635d9fd8500a75b5f20b59abefa56a144f", pet: "Isolde", theirs: "Isolde", verified: { how: "scan", on: "3 Oct 2026" }, trusted: true, contact: true };
+  const PEOPLE = [
+    ["me", "You", "Your own identity", { key: "9dd4994d505e788b2cd3289637f834f142ecde46eefe99acfd0bbc969618543c", me: true, theirs: "Tristan" }],
+    ["isolde", "Verified & trusted", "A contact you named, checked and trust", ISOLDE],
+    ["melot", "Verified only", "You know it's them; you don't trust them", { key: "a3f1c9d04e5b7a2286fd19ce0b3a4d77e21f68b9c0d54a1e9f73b2c6d8e01f45", pet: "Melot (careful)", theirs: "Melot", verified: { how: "scan", on: "1 Nov 2026" }, contact: true }],
+    ["mark", "Trusted only", "Named and trusted, key not checked", { key: "4e344c1b0f9d2a154d3a52060d06295ca4c4448f42896ebca9c0203d5f3e6bd1", pet: "King Mark", theirs: "Mark", trusted: true, contact: true }],
+    ["kurwenal", "Contact, unnamed", "In contacts, using their own name", { key: "57b0338330f79848dd9c52ed310cc4b542f0ed1a8a892b8e47ce5a99fbff6372", theirs: "Kurwenal", contact: true }],
+    ["inkwell", "Stranger", "Not in contacts, has a name", { key: "c2109a0e5d3f71b8a6c4e2f09d1b3a5c7e9f0a2b4c6d8e1f3a5b7c9d0e2f4a6b", theirs: "inkwell" }],
+    ["lookalike", "Look-alike", "Claims a name you've verified", { key: "e8bcf3829a1d77c03b5f2e6d4a1c09b8e7f3d2c1b0a99887766554433221100f", theirs: "Isolde", lookalikeOf: ISOLDE }],
+    ["nameless", "No name", "Just a key", { key: "7d0e5f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6" }],
+  ];
+  const byId = Object.fromEntries(PEOPLE.map(([k, , , p]) => [k, p]));
+  let sel = new URLSearchParams(location.search).get("who") || "isolde";
+
+  function glance() {
+    $("glance").innerHTML = `<tr><th>Case</th><th>Row</th><th>Mention</th><th>Byline</th></tr>` + PEOPLE.map(([k, label, , p]) => `
+      <tr class="${k === sel ? "sel" : ""}" data-who="${k}" style="cursor:pointer"><td class="case">${label}</td><td style="min-width:300px">${I.row(p)}</td><td>${I.chip(p)}</td><td>${I.byline(p)}</td></tr>`).join("");
+  }
+
+  function pieces() {
+    const p = byId[sel], n = I.name(p);
+    const vs = p.lookalikeOf || (p.me ? byId.isolde : byId.lookalike);
+    const PIECES = [
+      { t: "Avatar", c: "avatar(p, size)", show: `${["xs", "sm", "", "lg", "xl"].map(s => I.avatar(p, s)).join("")}`, use: p.me ? "Yours is always <b>Vermilion</b> with the two curtain lines, ringed; no one else's avatar can be Vermilion. Sizes: <b>xs</b> mentions · <b>sm</b> group messages · <b>md</b> rows and headers · <b>lg</b> hover cards · <b>xl</b> profiles." : "<b>xs</b> mentions and reactions · <b>sm</b> group messages · <b>md</b> rows and headers · <b>lg</b> hover cards · <b>xl</b> profiles. The colour comes from the key, never Vermilion (that's yours); verified identities wear the Gilt seal from md up." },
+      { t: "In a crowd", c: "avatar(p, 'sm') × n", show: `<div style="display:flex;gap:6px;flex-wrap:wrap">${PEOPLE.map(([, , , q]) => I.avatar(q, "sm")).join("")}${PEOPLE.slice(1).map(([, , , q]) => I.avatar({ ...q, key: q.key.split("").reverse().join("") }, "sm")).join("")}</div>`, use: "Sixteen identities together, as in a member list or search results. Only one of them can be Vermilion: you." },
+      { t: "Key", c: "tinyKey · shortKey · keyColors", cls: "col", show: `<div class="kv"><span class="lbl2">Tiny</span><span class="id-key">${I.tinyKey(p.key)}</span><span class="lbl2">Short</span><span class="id-key">${I.shortKey(p.key)}</span><span class="lbl2">Colours</span>${I.keyColors(p.key)}<span class="lbl2">Colours, large</span>${I.keyColors(p.key, "lg")}</div>`, use: "<b>Tiny</b> stands in for a missing name in tight places · <b>short</b> sits under names · <b>colours</b> let two keys be told apart at a glance." },
+      { t: "Name", c: "name(p) · nameHtml(p)", cls: "col", show: `<div class="kv"><span class="lbl2">Shown as</span><span style="font-size:20px">${I.nameHtml(p)}</span><span class="lbl2">Secondary</span><span class="id-calls">${n.secondary || "—"}</span></div>`, use: "Never write a name by hand: always go through <b>nameHtml</b>, so the quotes and the key fallback are applied the same way everywhere." },
+      { t: "Badges", c: "badges(p) · marks(p)", cls: "col", show: `<div class="kv"><span class="lbl2">Badges</span>${I.badges(p)}<span class="lbl2">Marks</span><span>${I.nameHtml(p)} ${I.marks(p)}</span></div>`, use: "<b>Badges</b> spell it out on profiles and hover cards. <b>Marks</b> are the icon-only form that follows a name in rows, headers and messages." },
+      { t: "Mention", c: "chip(p)", show: `<p class="sentence" style="margin:0">Ask ${I.chip(p)} about the goblet before Friday.</p>`, use: "Inside text: messages, posts, notifications. Tap opens the hover card." },
+      { t: "Byline", c: "byline(p)", cls: "col", show: `<div class="feedline">${I.byline(p)}<span class="board">· Prints</span><span>#4021 · 2h</span></div>`, use: "Above posts and threads, where the content matters more than the author." },
+      { t: "Row", c: "row(p, end)", cls: "col", show: `${I.row(p)}${I.row(p, `<button class="btn btn-sm">Message</button>`)}`, use: "Contacts, group members, pickers, search results. The end slot holds key colours by default, or an action." },
+      { t: "Header", c: "header(p, status)", cls: "col", show: `<div class="chathead">${I.header(p, p.me ? "" : "online")}</div>`, use: "Top of a chat or a profile page: name and marks, then status and the short key." },
+      { t: "Hover card", c: "hovercard(p)", cls: "center", show: I.hovercard(p), use: "What opens when you tap any name, avatar or mention. Enough to recognise someone, with one or two actions." },
+      { t: "Profile panel", c: "card(p, { qr })", cls: "center", show: I.card(p, { qr: isolQr("isol:pub:" + p.key) }), use: "The full view of an identity: contact details, your own identity page, the result of scanning a QR." },
+      { t: "Compare", c: "compare(a, b)", wide: true, show: I.compare(p, vs), use: `Two keys side by side, with the groups that differ underlined in Madder. Used from a look-alike warning and when verifying in person. Here: <b>${I.name(p).plain}</b> against <b>${I.name(vs).plain}</b>.` },
+    ];
+    $("pieces").innerHTML = PIECES.map(x => `<article class="piece${x.wide ? " wide" : ""}"><header><h3>${x.t}</h3><code>${x.c}</code></header><div class="show ${x.cls || ""}">${x.show}</div><div class="use">${x.use}</div></article>`).join("");
+  }
+
+  function controls() {
+    $("who-ctl").innerHTML = PEOPLE.map(([k, label, sub, p]) => `<button data-who="${k}" aria-pressed="${k === sel}" title="${sub}">${I.avatar(p, "sm")}${label}</button>`).join("");
+  }
+  function render() { controls(); glance(); pieces(); }
+  document.addEventListener("click", e => { const w = e.target.closest("[data-who]"); if (w && !e.target.closest(".id-chip")) { sel = w.dataset.who; render(); if (w.closest("#glance")) $("who-ctl").scrollIntoView({ behavior: "smooth", block: "start" }); } });
+  render();
+</script>
+</body>
+</html>

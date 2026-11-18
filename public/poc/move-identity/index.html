@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Move Identity POC</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/components.css">
+<style>
+  /* Component: move identity (.mvi). Two ways to get an identity onto another device:
+     a QR code that holds the private key, or an encrypted file seeded as a torrent. */
+
+  .card-head .who { margin-top: 10px; font-family: var(--font-mono); font-size: 15px; color: var(--text-muted); }
+  .card-head .who b { color: var(--text); font-weight: 400; }
+
+  /* Mode tabs */
+  .modes { display: grid; grid-template-columns: 1fr 1fr; border-bottom: var(--line) solid var(--rule-soft); }
+  .mode {
+    display: flex; gap: 12px; align-items: flex-start; text-align: left;
+    padding: 14px 24px 13px; border: 0; background: none; cursor: pointer; position: relative;
+  }
+  .mode + .mode { border-left: 1px solid var(--rule-soft); }
+  .mode:hover { background: var(--color-3); }
+  .mode svg.i { width: 22px; height: 22px; margin-top: 1px; color: var(--text-muted); }
+  .mode b { display: block; font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--text-muted); }
+  .mode small { display: block; font-size: 14px; color: var(--text-faint); margin-top: 2px; }
+  .mode[aria-selected=true] b, .mode[aria-selected=true] svg.i { color: var(--text); }
+  .mode[aria-selected=true]::after { content: ""; position: absolute; left: 24px; right: 24px; bottom: -1.5px; height: 3px; background: var(--color-2); }
+
+  /* ── QR mode ── */
+  .qr-wrap { display: grid; justify-items: center; gap: 14px; padding: 20px 14px 18px; }
+  .qr-box {
+    width: 100%; max-width: 480px; aspect-ratio: 1;
+    position: relative;
+  }
+  .qr-box > svg { display: block; width: 100%; height: 100%; border-radius: var(--r-sm); }
+  .qr-cover {
+    position: absolute; inset: 0;
+    display: grid; place-content: center; justify-items: center; gap: 12px; text-align: center; padding: 24px;
+    border: 1.5px dashed rgba(199,174,141,.55); border-radius: var(--r-sm);
+    background:
+      repeating-linear-gradient(45deg, rgba(199,174,141,.07) 0 12px, transparent 12px 24px);
+  }
+  .qr-cover svg.big { width: 44px; height: 44px; color: var(--secret-ornament); stroke-width: 1.3; }
+  .qr-cover h4 { margin: 0; font-size: 21px; font-weight: 500; max-width: 18ch; line-height: 1.2; }
+  .qr-cover p { margin: 0; font-size: 15px; color: var(--secret-dim); max-width: 34ch; }
+  .btn-light { background: var(--color-1); border-color: var(--color-1); color: var(--color-15); }
+  .btn-light:hover { background: var(--color-3); border-color: var(--color-3); }
+
+  .qr-timer { width: 100%; max-width: 480px; display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; }
+  .qr-timer .bar { grid-column: 1 / -1; height: 4px; background: rgba(199,174,141,.25); border-radius: 999px; overflow: hidden; }
+  .qr-timer .bar > div { height: 100%; background: var(--color-2); transition: width 1s linear; }
+  .qr-timer span { font-family: var(--font-mono); font-size: 15px; color: var(--secret-dim); }
+  .qr-timer span b { color: var(--secret-ink); font-weight: 400; }
+
+  .contents { margin: 0; padding: 0 14px 16px; list-style: none; display: grid; gap: 6px; }
+  .contents li { display: grid; grid-template-columns: 130px 1fr; gap: 10px; align-items: baseline; font-size: 15px; }
+  .contents .k { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--secret-dim); }
+  .contents code { font-family: var(--font-mono); font-size: 15px; }
+  .contents .hot { color: var(--color-2); font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+
+  .before { margin: 18px 0 0; padding: 14px 16px; border: var(--line) solid var(--color-10); border-left-width: 6px; border-radius: var(--r-sm); }
+  .before strong { display: block; font-family: var(--font-display); font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--color-10); margin-bottom: 4px; }
+  .before ul { margin: 0; padding-left: 18px; color: var(--text); }
+  .before li + li { margin-top: 2px; }
+
+  /* ── File mode ── */
+  .steps { list-style: none; margin: 0 0 22px; padding: 0; display: grid; gap: 14px; counter-reset: s; }
+  .steps li { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; counter-increment: s; }
+  .steps li::before {
+    content: counter(s); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+    border: var(--line) solid var(--rule); font-family: var(--font-display); font-weight: 700; font-size: 14px;
+  }
+  .steps b { display: block; font-weight: 500; }
+  .steps span { color: var(--text-muted); font-size: 15px; }
+
+  .status {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 12px 14px; margin-bottom: 18px;
+    border: var(--line) solid var(--rule); border-radius: var(--r-sm);
+  }
+  .status .pulse { width: 12px; height: 12px; border-radius: 50%; background: var(--color-14); flex: none; position: relative; }
+  .status .pulse::after { content: ""; position: absolute; inset: -5px; border-radius: 50%; border: 2px solid var(--color-14); animation: ring 1.6s ease-out infinite; }
+  @keyframes ring { from { opacity: .9; transform: scale(.6); } to { opacity: 0; transform: scale(1.6); } }
+  .status.sending .pulse { background: var(--color-11); } .status.sending .pulse::after { border-color: var(--color-11); }
+  .status .what { display: grid; flex: 1; min-width: 14ch; }
+  .status .what b { font-weight: 500; }
+  .status .what small { font-family: var(--font-mono); font-size: 14px; color: var(--text-muted); }
+  .status .progress { flex-basis: 100%; height: 6px; background: var(--color-3); border-radius: 999px; overflow: hidden; }
+  .status .progress > div { height: 100%; background: var(--color-11); transition: width .3s linear; }
+
+  .magnet { font-family: var(--font-mono); font-size: 15px; line-height: 1.45; word-break: break-all; color: var(--text); }
+  .magnet .h { color: var(--color-13); }
+
+  .code { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; font-family: var(--font-mono); font-size: 34px; letter-spacing: .08em; line-height: 1.1; }
+  .code .sep { color: var(--secret-ornament); }
+  .plate-hint { margin: 12px 0 0; font-size: 14px; color: var(--secret-dim); }
+  .gap { height: 14px; }
+
+  .done { display: grid; justify-items: center; text-align: center; gap: 10px; padding: 28px 12px 8px; }
+  .done .seal { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--color-13); color: var(--color-1); box-shadow: 0 0 0 4px var(--color-1), 0 0 0 5.5px var(--color-13); }
+  .done .seal svg { width: 30px; height: 30px; stroke-width: 2.2; }
+  .done h4 { margin: 8px 0 0; font-size: 23px; font-weight: 500; }
+  .done p { margin: 0; color: var(--text-muted); max-width: 44ch; }
+
+  /* Narrow */
+  .mvi.narrow .mode { padding: 12px 16px 11px; }
+  .mvi.narrow .mode small { display: none; }
+  .mvi.narrow .mode[aria-selected=true]::after { left: 16px; right: 16px; }
+  .mvi.narrow .qr-plate { margin: -8px -16px 0; border-left: 0; border-right: 0; }
+  .mvi.narrow .qr-wrap { padding: 12px 8px; }
+  .mvi.narrow .qr-cover h4 { font-size: 18px; }
+  .mvi.narrow .code { font-size: 24px; gap: 6px 8px; letter-spacing: .04em; }
+  .mvi.narrow .contents li { grid-template-columns: 110px 1fr; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5.5A1.5 1.5 0 0 1 6.5 4H15"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+  <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 20h2M20 14v2"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3v5h5"/><path d="M9 14l3 3 3-3M12 10v7"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></symbol>
+  <symbol id="i-seed" viewBox="0 0 24 24"><path d="M12 21V11"/><path d="M12 11c0-4 3-7 8-7 0 5-3 7-8 7Z"/><path d="M12 14c0-3-2.5-5.5-7-5.5 0 4 2.5 5.5 7 5.5Z"/></symbol>
+</svg>
+
+<div class="frame">
+  <header class="masthead">
+    <a href="../index.html">← Isol POCs</a>
+    <h1>Move identity</h1>
+    <p>Get this identity onto another device or browser: show it as a QR code, or send it as an encrypted file seeded from this browser.</p>
+  </header>
+
+  <section class="sect">
+    <div class="toolbar">
+      <div><span class="lbl">State</span>
+        <div class="segmented" role="group" aria-label="State" id="state-ctl">
+          <button data-state="qr-hidden" aria-pressed="true">QR hidden</button>
+          <button data-state="qr-shown" aria-pressed="false">QR shown</button>
+          <button data-state="file-ready" aria-pressed="false">File ready</button>
+          <button data-state="file-seeding" aria-pressed="false">Seeding</button>
+          <button data-state="file-sending" aria-pressed="false">Sending</button>
+          <button data-state="file-done" aria-pressed="false">Received</button>
+        </div>
+      </div>
+      <div><span class="lbl">Width</span>
+        <div class="segmented" role="group" aria-label="Width" id="width-ctl">
+          <button data-width="wide" aria-pressed="true">Wide</button>
+          <button data-width="phone" aria-pressed="false">Phone</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage" id="stage" data-width="wide">
+      <article class="card mvi" id="mvi" aria-labelledby="mvi-title"></article>
+    </div>
+  </section>
+
+  <section class="sect">
+    <p class="eyebrow">Design notes</p>
+    <h2>Why it looks like this</h2>
+    <div class="notes">
+      <div><h3>The QR is a secret</h3><p>It holds the private key, so it gets the same dark plate and "Keep secret" tag as the words and key in Create identity. It starts covered, and the cover says plainly what scanning it does.</p></div>
+      <div><h3>The Isol QR</h3><p>The code is drawn by <code>isol-qr.js</code>, the halftone over Isolde in the house style, up to 480px square. It holds the identity as a small JSON payload (private and public key), well inside the 1,500-byte limit.</p></div>
+      <div><h3>Shown for a minute</h3><p>Once shown, the QR hides itself after 60 seconds, with a bar counting down. "Hide now" is right next to it.</p></div>
+      <div><h3>Link and code travel apart</h3><p>The torrent only holds an encrypted file. The link is light (fine to send), the transfer code is dark (secret). The other browser needs both, and the code should go a different way than the link.</p></div>
+      <div><h3>Seeding is visible</h3><p>While this browser seeds, a status bar with a pulsing dot shows peers and progress, with Stop always at hand. Seeding stops by itself once the file arrives, or after 10 minutes.</p></div>
+      <div><h3>Mock data</h3><p>The identity and its QR are real (isol's crypto, isol-qr.js). The magnet link and transfer code are made up for the design. In the file mode the demo plays itself: a peer joins after a few seconds.</p></div>
+    </div>
+  </section>
+</div>
+
+<script src="../shared/identity-crypto.js"></script>
+<script src="../shared/isol-qr.global.js"></script>
+<script>
+  const root = document.getElementById("mvi");
+  const stage = document.getElementById("stage");
+  const identity = IsolCrypto.create();
+  const QR_SECONDS = 60;
+
+  // ── Mock data ──────────────────────────────────────────────
+  function prng(seedHex) {
+    let s = parseInt(seedHex.slice(0, 8), 16) >>> 0 || 1;
+    return () => { s ^= s << 13; s >>>= 0; s ^= s >> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
+  }
+  const rand = prng(identity.publicKey);
+  const randHex = n => Array.from({ length: n }, () => "0123456789abcdef"[Math.floor(rand() * 16)]).join("");
+  const B32 = "ABCDEFGHJKMNPQRSTVWXYZ23456789";
+  const transferCode = [0, 1, 2].map(() => Array.from({ length: 4 }, () => B32[Math.floor(rand() * B32.length)]).join(""));
+  const infoHash = randHex(40);
+  const magnet = `magnet:?xt=urn:btih:${infoHash}&dn=identity.isol&xl=418&tr=wss%3A%2F%2Ftracker.webtorrent.dev`;
+
+  // The real QR: the identity payload drawn with isol-qr.js (Isol's halftone style). Built once.
+  const qrPayload = JSON.stringify({ v: 1, kind: "isol-identity", sk: identity.privateKey, pk: identity.publicKey });
+  const qrBytes = new TextEncoder().encode(qrPayload).length;
+  const qrSvg = isolQr(qrPayload);
+  const qrModules = +qrSvg.match(/viewBox="0 0 (\d+)/)[1] - 2 * ISOL_QR_CONFIG.quiet;
+
+  // ── State ──────────────────────────────────────────────────
+  const state = { mode: "qr", qrShown: false, qrLeft: QR_SECONDS, file: "ready", progress: 0, auto: false };
+  let timers = [];
+  const clearTimers = () => { timers.forEach(clearInterval); timers = []; };
+
+  const icon = id => `<svg class="i" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+  const short = hex => `${hex.slice(0, 8)}…${hex.slice(-8)}`;
+  const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+  function renderQr() {
+    return `
+      <div class="plate secret qr-plate">
+        <div class="plate-head">
+          <h3>Identity QR</h3><span class="tag keep">Keep secret</span><span class="meta">holds the private key</span>
+          ${state.qrShown ? `<div class="actions"><button class="btn btn-sm" data-act="qr-hide">${icon("eye-off")}<span class="lbl">Hide now</span></button></div>` : ""}
+        </div>
+        <div class="qr-wrap">
+          <div class="qr-box">
+            ${state.qrShown ? qrSvg : `
+              <div class="qr-cover">
+                <svg class="i big" aria-hidden="true"><use href="#i-eye-off"/></svg>
+                <h4>Anyone who scans this becomes you</h4>
+                <p>Show it only to a camera on your own device.</p>
+                <button class="btn btn-light" data-act="qr-show">${icon("eye")}Show QR</button>
+              </div>`}
+          </div>
+          ${state.qrShown ? `
+            <div class="qr-timer" aria-live="polite">
+              <div class="bar"><div style="width:${(state.qrLeft / QR_SECONDS) * 100}%"></div></div>
+              <span>Hides in <b>${mmss(state.qrLeft)}</b></span>
+            </div>` : ""}
+        </div>
+        <ul class="contents">
+          <li><span class="k">Private key</span><span class="hot">Inside</span></li>
+          <li><span class="k">Public key</span><code>${short(identity.publicKey)}</code></li>
+          <li><span class="k">Format</span><code>isol-identity/1</code></li>
+          <li><span class="k">Size</span><code>${qrBytes} bytes · ${qrModules}×${qrModules}</code></li>
+        </ul>
+      </div>
+      <div class="before">
+        <strong>Before you show it</strong>
+        <ul>
+          <li>Stop any screen sharing or recording.</li>
+          <li>Check nobody can see your screen.</li>
+          <li>Scan it with the device you are moving to, then hide it.</li>
+        </ul>
+      </div>`;
+  }
+
+  function renderFile() {
+    if (state.file === "ready") return `
+      <ol class="steps">
+        <li><div><b>This browser encrypts the identity into a small file</b><span>and makes a one-time transfer code to open it.</span></div></li>
+        <li><div><b>It seeds the file as a torrent</b><span>You get a link to send to the other browser, any way you like.</span></div></li>
+        <li><div><b>The other browser opens the link and types the code</b><span>Send the code a different way than the link, or read it out.</span></div></li>
+      </ol>
+      <button class="btn btn-primary" data-act="seed">${icon("seed")}Start seeding</button>
+      <p class="card-note">Seeding stops once the file arrives, or after 10 minutes.</p>`;
+
+    if (state.file === "done") return `
+      <div class="done">
+        <div class="seal">${icon("check")}</div>
+        <h4>The other browser has it</h4>
+        <p>It downloaded the file and opened it with the code. Seeding stopped, and the link no longer works.</p>
+      </div>`;
+
+    const sending = state.file === "sending";
+    return `
+      <div class="status ${sending ? "sending" : ""}" aria-live="polite">
+        <span class="pulse" aria-hidden="true"></span>
+        <div class="what">
+          <b>${sending ? "Sending to the other browser" : "Seeding from this browser"}</b>
+          <small>${sending ? `1 peer · ${Math.round(state.progress)}% of 418 B` : "0 peers · waiting · stops in 9:42"}</small>
+        </div>
+        <button class="btn btn-sm btn-ghost" data-act="stop">${icon("stop")}Stop</button>
+        ${sending ? `<div class="progress"><div style="width:${state.progress}%"></div></div>` : ""}
+      </div>
+
+      <div class="plate public">
+        <div class="plate-head">
+          <h3>Transfer link</h3><span class="tag share">Send</span><span class="meta">magnet · 418 B · encrypted</span>
+          <div class="actions">
+            <button class="btn btn-sm btn-ghost" data-act="copy" data-copy="magnet">${icon("copy")}<span class="lbl">Copy</span></button>
+            <button class="btn btn-sm btn-ghost" data-act="share">${icon("share")}<span class="lbl">Share</span></button>
+          </div>
+        </div>
+        <div class="plate-body">
+          <div class="magnet">magnet:?xt=urn:btih:<span class="h">${infoHash}</span>&amp;dn=identity.isol&amp;xl=418&amp;tr=wss%3A%2F%2Ftracker.webtorrent.dev</div>
+        </div>
+      </div>
+
+      <div class="gap"></div>
+
+      <div class="plate secret">
+        <div class="plate-head">
+          <h3>Transfer code</h3><span class="tag keep">Keep secret</span><span class="meta">one-time</span>
+          <div class="actions">
+            <button class="btn btn-sm" data-act="copy" data-copy="code">${icon("copy")}<span class="lbl">Copy</span></button>
+          </div>
+        </div>
+        <div class="plate-body">
+          <div class="code" aria-label="Transfer code ${transferCode.join(" ")}">${transferCode.join('<span class="sep">·</span>')}</div>
+          <p class="plate-hint">The other browser asks for this. Don't send it in the same message as the link.</p>
+        </div>
+      </div>`;
+  }
+
+  function render() {
+    root.classList.toggle("narrow", stage.dataset.width === "phone" || root.clientWidth < 520);
+    const qr = state.mode === "qr";
+    root.innerHTML = `
+      <header class="card-head">
+        <div class="kicker">Identity</div>
+        <h2 id="mvi-title">Move identity</h2>
+        <div class="who">Moving <b>${short(identity.publicKey)}</b></div>
+      </header>
+      <div class="modes" role="tablist" aria-label="How to move it">
+        <button class="mode" role="tab" aria-selected="${qr}" data-act="mode" data-mode="qr">
+          ${icon("qr")}<span><b>QR code</b><small>Scan it with the other device</small></span></button>
+        <button class="mode" role="tab" aria-selected="${!qr}" data-act="mode" data-mode="file">
+          ${icon("file")}<span><b>File transfer</b><small>Seed it to another browser</small></span></button>
+      </div>
+      <div class="card-body" role="tabpanel">${qr ? renderQr() : renderFile()}</div>`;
+  }
+
+  // ── Behaviour ──────────────────────────────────────────────
+  function showQr() {
+    clearTimers();
+    state.qrShown = true; state.qrLeft = QR_SECONDS;
+    timers.push(setInterval(() => {
+      state.qrLeft -= 1;
+      if (state.qrLeft <= 0) { clearTimers(); state.qrShown = false; press("qr-hidden"); render(); return; }
+      const bar = root.querySelector(".qr-timer .bar > div"), left = root.querySelector(".qr-timer b");
+      if (bar) { bar.style.width = `${(state.qrLeft / QR_SECONDS) * 100}%`; left.textContent = mmss(state.qrLeft); }
+    }, 1000));
+  }
+
+  function play() { // demo: a peer joins, the file goes across, seeding stops
+    clearTimers();
+    let t = 0;
+    timers.push(setInterval(() => {
+      t += 1;
+      if (state.file === "seeding" && t >= 6) { state.file = "sending"; state.progress = 0; press("file-sending"); }
+      else if (state.file === "sending") {
+        state.progress = Math.min(100, state.progress + 9);
+        if (state.progress >= 100) { state.file = "done"; clearTimers(); press("file-done"); }
+      }
+      render();
+    }, 500));
+  }
+
+  root.addEventListener("click", async e => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const act = b.dataset.act;
+    if (act === "mode") {
+      clearTimers(); state.qrShown = false; state.mode = b.dataset.mode;
+      if (state.mode === "file") state.file = "ready";
+      press(state.mode === "qr" ? "qr-hidden" : "file-ready");
+    }
+    else if (act === "qr-show") { showQr(); press("qr-shown"); }
+    else if (act === "qr-hide") { clearTimers(); state.qrShown = false; press("qr-hidden"); }
+    else if (act === "seed") { state.file = "seeding"; press("file-seeding"); play(); }
+    else if (act === "stop") { clearTimers(); state.file = "ready"; press("file-ready"); }
+    else if (act === "share") {
+      try { await navigator.share({ title: "Isol identity transfer", url: magnet }); } catch (err) {}
+      return;
+    }
+    else if (act === "copy") {
+      const text = b.dataset.copy === "magnet" ? magnet : transferCode.join("-");
+      try { await navigator.clipboard.writeText(text); } catch (err) {}
+      const label = b.querySelector(".lbl"), use = b.querySelector("use");
+      label.textContent = "Copied"; use.setAttribute("href", "#i-check"); b.classList.add("copied-flash");
+      setTimeout(() => { label.textContent = "Copy"; use.setAttribute("href", "#i-copy"); b.classList.remove("copied-flash"); }, 1200);
+      return;
+    }
+    render();
+  });
+
+  // ── POC toolbar ────────────────────────────────────────────
+  const stateCtl = document.getElementById("state-ctl");
+  function press(s) { stateCtl.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.state === s)); }
+  stateCtl.addEventListener("click", e => {
+    const s = e.target.closest("button")?.dataset.state; if (!s) return;
+    clearTimers();
+    if (s.startsWith("qr")) { state.mode = "qr"; state.qrShown = false; if (s === "qr-shown") showQr(); }
+    else { state.mode = "file"; state.qrShown = false; state.file = s.slice(5); state.progress = 62; }
+    press(s); render();
+  });
+  const widthCtl = document.getElementById("width-ctl");
+  widthCtl.addEventListener("click", e => {
+    const w = e.target.closest("button")?.dataset.width; if (!w) return;
+    stage.dataset.width = w;
+    widthCtl.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.width === w));
+    render();
+  });
+  new ResizeObserver(() => {
+    const narrow = stage.dataset.width === "phone" || root.clientWidth < 520;
+    if (narrow !== root.classList.contains("narrow")) render();
+  }).observe(root);
+
+  render();
+
+  // Deep links for review: ?state=file-seeding&width=phone
+  const params = new URLSearchParams(location.search);
+  if (params.get("width")) widthCtl.querySelector(`[data-width="${params.get("width")}"]`)?.click();
+  if (params.get("state")) stateCtl.querySelector(`[data-state="${params.get("state")}"]`)?.click();
+</script>
+</body>
+</html>

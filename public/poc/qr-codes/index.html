@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Isol QR Codes</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/components.css">
+<style>
+  .controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px 28px; align-items: end; margin-bottom: 28px; }
+  .controls .lbl { display: block; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+  .payload { width: 100%; min-height: 64px; padding: 10px 12px; resize: vertical; font-family: var(--font-mono); font-size: 15px; line-height: 1.4; background: var(--color-1); border: var(--line) solid var(--color-9); border-radius: var(--r-sm); color: var(--text); word-break: break-all; }
+  .payload:focus { outline: none; border-color: var(--color-10); box-shadow: 0 0 0 3px rgba(188,77,45,.22); }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .presets button { height: 28px; padding: 0 10px; border: 1px solid var(--rule); border-radius: 999px; background: none; cursor: pointer; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .1em; }
+  .presets button:hover { background: var(--color-3); }
+  .facts { font-family: var(--font-mono); font-size: 14px; color: var(--text-muted); margin-top: 8px; }
+  .facts b { color: var(--text); font-weight: 400; }
+
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+  .qr-card { border: var(--line) solid var(--rule); background: var(--color-1); display: flex; flex-direction: column; min-width: 0; }
+  .qr-card .art { padding: 18px; background: var(--color-3); border-bottom: var(--line) solid var(--rule); cursor: zoom-in; }
+  .qr-card .art svg { display: block; width: 100%; height: auto; box-shadow: 0 1px 0 rgba(74,59,66,.2); }
+  .qr-card .body { padding: 14px 16px 16px; display: grid; gap: 10px; flex: 1; align-content: start; }
+  .qr-card h3 { margin: 0; font-size: 19px; font-weight: 500; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .qr-card h3 code { font-family: var(--font-mono); font-size: 13px; color: var(--accent-strong); font-weight: 400; }
+  .qr-card p { margin: 0; color: var(--text-muted); font-size: 15px; }
+  .swatches { display: flex; gap: 4px; flex-wrap: wrap; }
+  .swatches i { width: 18px; height: 18px; border-radius: 50%; border: 1px solid rgba(74,59,66,.35); }
+  .checks { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 999px; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .1em; border: 1px solid currentColor; }
+  .pill.ok { color: var(--color-13); } .pill.warn { color: #8a6a26; } .pill.bad { color: var(--color-10); } .pill.wait { color: var(--text-faint); }
+  .pill.solid.ok { background: var(--color-13); color: var(--color-1); border-color: var(--color-13); }
+  .pill.solid.bad { background: var(--color-10); color: var(--color-1); border-color: var(--color-10); }
+
+  .row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .row .grow { flex: 1; }
+  .mark { display: inline-flex; border: var(--line) solid var(--rule); border-radius: var(--r-sm); }
+  .mark button { border: 0; background: none; height: 30px; padding: 0 10px; cursor: pointer; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  .mark button + button { border-left: var(--line) solid var(--rule); }
+  .mark button[aria-pressed=true][data-v=ok] { background: var(--color-13); color: var(--color-1); }
+  .mark button[aria-pressed=true][data-v=fail] { background: var(--color-10); color: var(--color-1); }
+  .mark-lbl { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--text-muted); }
+
+  /* Scan view */
+  .scan { position: fixed; inset: 0; z-index: 50; background: var(--color-1); display: none; grid-template-rows: auto 1fr auto; }
+  .scan.open { display: grid; }
+  .scan header, .scan footer { display: flex; align-items: center; gap: 12px; padding: 12px 16px; flex-wrap: wrap; }
+  .scan header { border-bottom: var(--line) solid var(--rule-soft); }
+  .scan footer { border-top: var(--line) solid var(--rule-soft); justify-content: center; }
+  .scan header b { font-size: 19px; font-weight: 500; }
+  .scan header .grow { flex: 1; }
+  .scan .stagebig { display: grid; place-items: center; padding: 16px; min-height: 0; }
+  .scan .stagebig svg { width: min(88vw, calc(100vh - 170px)); height: auto; max-height: 100%; }
+
+  @media (max-width: 760px) { .controls { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="frame">
+  <header class="masthead">
+    <a href="../index.html">← Isol POCs</a>
+    <h1>QR codes</h1>
+    <p>Nine ways to dress a QR code in Isolde's colours and shapes. Each one is checked by a decoder in this page; then try them with your own scanner.</p>
+  </header>
+
+  <section class="sect">
+    <div class="controls">
+      <div>
+        <label class="lbl" for="payload">What the code holds</label>
+        <textarea class="payload" id="payload" spellcheck="false"></textarea>
+        <div class="presets" id="presets">
+          <button data-preset="short">Short link</button>
+          <button data-preset="pub">Public key</button>
+          <button data-preset="identity">Identity (private key + more)</button>
+        </div>
+        <div class="facts" id="facts"></div>
+      </div>
+      <div>
+        <span class="lbl">Error correction</span>
+        <div class="segmented" role="group" aria-label="Error correction" id="ec">
+          <button data-ec="L" aria-pressed="false">L 7%</button>
+          <button data-ec="M" aria-pressed="false">M 15%</button>
+          <button data-ec="Q" aria-pressed="false">Q 25%</button>
+          <button data-ec="H" aria-pressed="true">H 30%</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="gallery" id="gallery"></div>
+  </section>
+
+  <section class="sect">
+    <p class="eyebrow">Testing</p>
+    <h2>How to read the results</h2>
+    <div class="notes">
+      <div><h3>"Decodes" is a floor, not a promise</h3><p>The page renders each design to pixels and runs jsQR on it. A clean render is much easier than a phone camera, so a design that fails here will fail everywhere. One that passes still needs your scanner.</p></div>
+      <div><h3>Scan view</h3><p>Click a code (or "Scan view") to open it full screen. Arrow keys move between designs. Mark each one ✓ or ✗ as you go; marks are kept in this browser.</p></div>
+      <div><h3>Contrast</h3><p>The pill shows the worst contrast between any dark and light colour in the design. Above about 4:1 is comfortable. Below 3:1 depends on the scanner.</p></div>
+      <div><h3>Risk labels</h3><p><b>Safe</b>: standard shapes and strong contrast. <b>Bold</b>: odd shapes, a logo or an image, so it needs H. <b>Risky</b>: inverted or low contrast; some scanners refuse these.</p></div>
+      <div><h3>Error correction</h3><p>Designs that cover modules (the jewel) or shrink them (halftone) lean on error correction. Keep H for those. Long payloads at H make denser codes: try the identity preset.</p></div>
+      <div><h3>Downloads</h3><p>SVG for print and further design work, PNG at 16 px per module for quick tests.</p></div>
+    </div>
+  </section>
+</div>
+
+<div class="scan" id="scan" role="dialog" aria-modal="true" aria-label="Scan view">
+  <header>
+    <b id="scan-name"></b><span class="pill" id="scan-risk"></span><span class="grow"></span>
+    <button class="btn btn-sm btn-ghost" id="scan-close">Close · Esc</button>
+  </header>
+  <div class="stagebig" id="scan-art"></div>
+  <footer>
+    <button class="btn btn-sm" id="scan-prev">← Previous</button>
+    <span class="mark-lbl">My scanner</span>
+    <div class="mark" id="scan-mark"><button data-v="ok" aria-pressed="false">✓ Reads</button><button data-v="fail" aria-pressed="false">✗ Fails</button></div>
+    <button class="btn btn-sm" id="scan-next">Next →</button>
+  </footer>
+</div>
+
+<script src="../shared/qr.js"></script>
+<script src="../shared/isolde-480.js"></script>
+<script>
+  const C = {
+    vellum: "#F2E2C4", parchment: "#D9C4A5", linen: "#C7AE8D", vermilion: "#EC4823", madder: "#BC4D2D",
+    stone: "#A89C85", umber: "#786B55", sepia: "#655844", verdigris: "#528F8D", sage: "#7A8B76",
+    olive: "#5E6950", gilt: "#C19A4B", aubergine: "#4A3B42",
+  };
+
+  // ── Colour maths ───────────────────────────────────────────
+  const rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const lum = h => { const [r, g, b] = rgb(h).map(c => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+  const worst = (darks, lights) => Math.min(...darks.flatMap(d => lights.map(l => ratio(d, l))));
+  const nearest = (px, set) => set.reduce((best, h) => {
+    const [r, g, b] = rgb(h), d = 0.3 * (r - px[0]) ** 2 + 0.59 * (g - px[1]) ** 2 + 0.11 * (b - px[2]) ** 2;
+    return d < best.d ? { h, d } : best;
+  }, { h: set[0], d: Infinity }).h;
+
+  // ── QR geometry ────────────────────────────────────────────
+  function alignmentPositions(version, size) {
+    if (version === 1) return [];
+    const n = Math.floor(version / 7) + 2;
+    const step = version === 32 ? 26 : Math.ceil((version * 4 + 4) / (n * 2 - 2)) * 2;
+    const out = [6];
+    for (let pos = size - 7; out.length < n; pos -= step) out.splice(1, 0, pos);
+    return out;
+  }
+  function geometry({ size, version, matrix }) {
+    const kind = Array.from({ length: size }, () => Array(size).fill("data"));
+    const finders = [[0, 0], [0, size - 7], [size - 7, 0]];
+    for (const [r0, c0] of finders) for (let r = 0; r < 7; r++) for (let c = 0; c < 7; c++) kind[r0 + r][c0 + c] = "finder";
+    const pos = alignmentPositions(version, size), aligns = [];
+    for (const r of pos) for (const c of pos) {
+      if ((r === 6 && c === 6) || (r === 6 && c === size - 7) || (r === size - 7 && c === 6)) continue;
+      aligns.push([r - 2, c - 2]);
+      for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) kind[r - 2 + i][c - 2 + j] = "align";
+    }
+    return { size, version, matrix, kind, finders, aligns };
+  }
+  // Each data module that is dark (or light), with its row and column.
+  function* modules(g, want = true) {
+    for (let r = 0; r < g.size; r++) for (let c = 0; c < g.size; c++)
+      if (g.kind[r][c] === "data" && g.matrix[r][c] === want) yield [r, c];
+  }
+
+  // ── Drawing helpers (units are modules; q is the quiet-zone offset) ──
+  const f2 = n => +n.toFixed(3);
+  function eye(x, y, n, { shape = "square", ring, inner, ground }) {
+    // n = 7 for finders, 5 for alignment patterns
+    const k = (n - 1) / 2, cx = x + n / 2, cy = y + n / 2, ins = n === 7 ? 3 : 1;
+    if (shape === "circle") return `<circle cx="${cx}" cy="${cy}" r="${n / 2}" fill="${ring}"/><circle cx="${cx}" cy="${cy}" r="${n / 2 - 1}" fill="${ground}"/><circle cx="${cx}" cy="${cy}" r="${ins / 2 + (n === 5 ? .1 : 0)}" fill="${inner}"/>`;
+    const r1 = shape === "round" ? n * 0.3 : 0, r2 = shape === "round" ? (n - 2) * 0.25 : 0, r3 = shape === "round" ? ins * 0.32 : 0;
+    return `<rect x="${x}" y="${y}" width="${n}" height="${n}" rx="${r1}" fill="${ring}"/>` +
+      `<rect x="${x + 1}" y="${y + 1}" width="${n - 2}" height="${n - 2}" rx="${r2}" fill="${ground}"/>` +
+      `<rect x="${x + k + .5 - ins / 2}" y="${y + k + .5 - ins / 2}" width="${ins}" height="${ins}" rx="${r3}" fill="${inner}"/>`;
+  }
+  function eyes(g, q, finderStyle, alignStyle = finderStyle) {
+    return g.finders.map(([r, c]) => eye(c + q, r + q, 7, finderStyle)).join("") +
+      g.aligns.map(([r, c]) => eye(c + q, r + q, 5, alignStyle)).join("");
+  }
+  const svg = (w, inner, defs = "") =>
+    `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${w} ${w}" shape-rendering="geometricPrecision">${defs ? `<defs>${defs}</defs>` : ""}${inner}</svg>`;
+
+  // ── The designs ────────────────────────────────────────────
+  let sample = null; // module-sized RGB samples of the Isolde crop, filled after the image loads
+
+  const DESIGNS = [
+    {
+      id: "ledger", name: "Ledger", risk: "safe",
+      idea: "The baseline. Square Aubergine modules on Vellum, with Madder in the eyes.",
+      darks: [C.aubergine, C.madder], lights: [C.vellum],
+      render(g) {
+        const q = 4, w = g.size + 2 * q;
+        let d = ""; for (const [r, c] of modules(g)) d += `M${c + q} ${r + q}h1v1h-1z`;
+        return svg(w, `<rect width="${w}" height="${w}" fill="${C.vellum}"/><path d="${d}" fill="${C.aubergine}"/>` +
+          eyes(g, q, { ring: C.aubergine, inner: C.madder, ground: C.vellum }));
+      },
+    },
+    {
+      id: "ink-dots", name: "Ink dots", risk: "safe",
+      idea: "Round dots in two inks, Sepia and Aubergine on a checker. Round eyes with a Vermilion pupil.",
+      darks: [C.aubergine, C.sepia, C.vermilion], lights: [C.vellum],
+      render(g) {
+        const q = 4, w = g.size + 2 * q;
+        let a = "", b = "";
+        for (const [r, c] of modules(g)) {
+          const dot = `<circle cx="${c + q + .5}" cy="${r + q + .5}" r=".45"/>`;
+          ((r + c) % 2 ? a += dot : b += dot);
+        }
+        return svg(w, `<rect width="${w}" height="${w}" fill="${C.vellum}"/><g fill="${C.aubergine}">${a}</g><g fill="${C.sepia}">${b}</g>` +
+          eyes(g, q, { shape: "round", ring: C.aubergine, inner: C.vermilion, ground: C.vellum }, { shape: "circle", ring: C.sepia, inner: C.vermilion, ground: C.vellum }));
+      },
+    },
+    {
+      id: "triple-rule", name: "Triple rule", risk: "bold",
+      idea: "Lozenge modules like the print's ornaments. Each eye gets Beardsley's triple-rule frame in Gilt.",
+      darks: [C.aubergine, C.madder], lights: [C.vellum],
+      render(g) {
+        const q = 5, w = g.size + 2 * q;
+        let d = "";
+        for (const [r, c] of modules(g)) { const x = c + q, y = r + q; d += `M${x + .5} ${y - .06}L${x + 1.06} ${y + .5}L${x + .5} ${y + 1.06}L${x - .06} ${y + .5}Z`; }
+        const frames = g.finders.map(([r, c]) => {
+          const x = c + q, y = r + q;
+          return `<rect x="${x - .55}" y="${y - .55}" width="8.1" height="8.1" fill="none" stroke="${C.gilt}" stroke-width=".14"/>` +
+                 `<rect x="${x - .85}" y="${y - .85}" width="8.7" height="8.7" fill="none" stroke="${C.gilt}" stroke-width=".14"/>`;
+        }).join("");
+        const border = `<rect x="1.2" y="1.2" width="${w - 2.4}" height="${w - 2.4}" fill="none" stroke="${C.aubergine}" stroke-width=".22"/>` +
+          `<rect x="1.65" y="1.65" width="${w - 3.3}" height="${w - 3.3}" fill="none" stroke="${C.aubergine}" stroke-width=".22"/>` +
+          `<rect x="2.1" y="2.1" width="${w - 4.2}" height="${w - 4.2}" fill="none" stroke="${C.gilt}" stroke-width=".12"/>`;
+        return svg(w, `<rect width="${w}" height="${w}" fill="${C.vellum}"/>${border}<path d="${d}" fill="${C.aubergine}"/>${frames}` +
+          eyes(g, q, { ring: C.aubergine, inner: C.madder, ground: C.vellum }));
+      },
+    },
+    {
+      id: "curtain", name: "Curtain", risk: "safe",
+      idea: "The masthead: a Vermilion field with two curtain lines, and the code hung on a Vellum panel. Columns change ink like the palette strip.",
+      darks: [C.aubergine, C.sepia, C.olive, C.madder], lights: [C.vellum],
+      render(g) {
+        const q = 4, pad = 5, w = g.size + 2 * q + 2 * pad, o = q + pad;
+        const bands = [[0.3, C.aubergine], [0.55, C.sepia], [0.8, C.olive], [1.01, C.madder]];
+        const paths = bands.map(() => "");
+        for (const [r, c] of modules(g)) {
+          const i = bands.findIndex(([t]) => c / g.size < t);
+          paths[i] += `<rect x="${c + o + .04}" y="${r + o + .04}" width=".92" height=".92" rx=".22"/>`;
+        }
+        const panel = pad - .4, pw = w - 2 * panel;
+        return svg(w,
+          `<rect width="${w}" height="${w}" fill="${C.vermilion}"/>` +
+          `<line x1="${w * .78}" y1="0" x2="${w * .78}" y2="${w}" stroke="${C.parchment}" stroke-width=".22" opacity=".9"/>` +
+          `<line x1="${w * .9}" y1="0" x2="${w * .9}" y2="${w}" stroke="${C.parchment}" stroke-width=".22" opacity=".9"/>` +
+          `<rect x="${panel}" y="${panel}" width="${pw}" height="${pw}" fill="${C.vellum}" stroke="${C.aubergine}" stroke-width=".25"/>` +
+          paths.map((p, i) => `<g fill="${bands[i][1]}">${p}</g>`).join("") +
+          eyes(g, o, { shape: "round", ring: C.aubergine, inner: C.vermilion, ground: C.vellum }));
+      },
+    },
+    {
+      id: "ink-strokes", name: "Ink strokes", risk: "bold",
+      idea: "Neighbouring modules run together into strokes, like lithographic line. A diagonal ink wash from Aubergine through Olive to Madder.",
+      darks: [C.aubergine, C.olive, C.madder], lights: [C.vellum],
+      render(g) {
+        const q = 4, w = g.size + 2 * q;
+        let d = "";
+        for (let r = 0; r < g.size; r++) {
+          let c = 0;
+          while (c < g.size) {
+            if (g.kind[r][c] === "data" && g.matrix[r][c]) {
+              let e = c; while (e + 1 < g.size && g.kind[r][e + 1] === "data" && g.matrix[r][e + 1]) e++;
+              d += `<rect x="${c + q + .06}" y="${r + q + .1}" width="${e - c + .88}" height=".8" rx=".4"/>`;
+              c = e + 1;
+            } else c++;
+          }
+        }
+        const defs = `<linearGradient id="wash" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${C.aubergine}"/><stop offset=".55" stop-color="${C.olive}"/><stop offset="1" stop-color="${C.madder}"/></linearGradient>`;
+        return svg(w, `<rect width="${w}" height="${w}" fill="${C.vellum}"/><g fill="url(#wash)">${d}</g>` +
+          eyes(g, q, { shape: "round", ring: C.aubergine, inner: C.olive, ground: C.vellum }, { shape: "round", ring: C.olive, inner: C.madder, ground: C.vellum }), defs);
+      },
+    },
+    {
+      id: "jewel", name: "Jewel", risk: "bold",
+      idea: "A sun-and-jewel emblem from the colour schemes in the middle. It covers about 5% of the code, which error correction H absorbs.",
+      darks: [C.aubergine, C.sepia], lights: [C.vellum],
+      render(g) {
+        const q = 4, w = g.size + 2 * q;
+        const hole = Math.max(7, Math.round(g.size * 0.23) | 1), h0 = (g.size - hole) / 2;
+        const inHole = (r, c) => r >= Math.floor(h0) && r < Math.floor(h0) + hole && c >= Math.floor(h0) && c < Math.floor(h0) + hole;
+        let d = "";
+        for (const [r, c] of modules(g)) if (!inHole(r, c)) d += `<rect x="${c + q + .06}" y="${r + q + .06}" width=".88" height=".88" rx=".3"/>`;
+        const cx = w / 2, R = hole / 2;
+        const emblem =
+          `<circle cx="${cx}" cy="${cx}" r="${R}" fill="${C.vellum}"/>` +
+          `<circle cx="${cx}" cy="${cx}" r="${R * .86}" fill="${C.vermilion}"/>` +
+          `<circle cx="${cx}" cy="${cx}" r="${R * .86}" fill="none" stroke="${C.aubergine}" stroke-width=".18"/>` +
+          `<circle cx="${cx}" cy="${cx}" r="${R * .62}" fill="none" stroke="${C.vellum}" stroke-width=".18"/>` +
+          `<path d="M${cx} ${cx - R * .36}L${cx + R * .26} ${cx}L${cx} ${cx + R * .36}L${cx - R * .26} ${cx}Z" fill="${C.verdigris}" stroke="${C.aubergine}" stroke-width=".12"/>`;
+        return svg(w, `<rect width="${w}" height="${w}" fill="${C.vellum}"/><g fill="${C.aubergine}">${d}</g>${emblem}` +
+          eyes(g, q, { shape: "round", ring: C.aubergine, inner: C.verdigris, ground: C.vellum }, { shape: "round", ring: C.sepia, inner: C.aubergine, ground: C.vellum }));
+      },
+    },
+    {
+      id: "halftone", name: "Isolde halftone", risk: "bold",
+      idea: "The print itself behind the code. Every module shrinks to a dot, Aubergine or Vellum, so a scanner reading the centres still gets the code.",
+      darks: [C.aubergine], lights: [C.vellum],
+      render(g) {
+        const q = 4, w = g.size + 2 * q;
+        let dark = "", light = "";
+        for (let r = 0; r < g.size; r++) for (let c = 0; c < g.size; c++) {
+          if (g.kind[r][c] !== "data") continue;
+          const dot = `<rect x="${c + q + .3}" y="${r + q + .3}" width=".4" height=".4" rx=".08"/>`;
+          g.matrix[r][c] ? dark += dot : light += dot;
+        }
+        const pads = g.finders.map(([r, c]) => `<rect x="${c + q - 1}" y="${r + q - 1}" width="9" height="9" fill="${C.vellum}"/>`).join("");
+        return svg(w,
+          `<rect width="${w}" height="${w}" fill="${C.vellum}"/>` +
+          `<image href="${window.ISOLDE_JPG}" x="${q}" y="${q}" width="${g.size}" height="${g.size}" preserveAspectRatio="xMidYMid slice"/>` +
+          pads + `<g fill="${C.vellum}">${light}</g><g fill="${C.aubergine}">${dark}</g>` +
+          eyes(g, q, { ring: C.aubergine, inner: C.aubergine, ground: C.vellum }, { ring: C.aubergine, inner: C.aubergine, ground: C.vellum }));
+      },
+    },
+    {
+      id: "mosaic", name: "Isolde mosaic", risk: "bold",
+      idea: "Each module takes the palette colour nearest to the print underneath it, dark modules from the dark inks and light ones from the papers. The picture shows through the code.",
+      darks: [C.aubergine, C.sepia, C.olive, C.madder], lights: [C.vellum, C.parchment, C.linen],
+      render(g) {
+        const q = 4, w = g.size + 2 * q;
+        const darks = this.darks, lights = this.lights;
+        let d = "";
+        for (let r = 0; r < g.size; r++) for (let c = 0; c < g.size; c++) {
+          if (g.kind[r][c] !== "data") continue;
+          const px = sample ? sample(r, c, g.size) : [242, 226, 196];
+          const fill = nearest(px, g.matrix[r][c] ? darks : lights);
+          d += `<rect x="${c + q}" y="${r + q}" width="1.02" height="1.02" fill="${fill}"/>`;
+        }
+        return svg(w, `<rect width="${w}" height="${w}" fill="${C.vellum}"/>${d}` +
+          eyes(g, q, { shape: "round", ring: C.aubergine, inner: C.madder, ground: C.vellum }, { shape: "round", ring: C.aubergine, inner: C.aubergine, ground: C.parchment }));
+      },
+    },
+    {
+      id: "night", name: "Aubergine night", risk: "risky",
+      idea: "Inverted: Vellum and Gilt dots on Aubergine, from the night colour scheme. Good-looking, but some scanners don't read light-on-dark codes.",
+      darks: [C.aubergine], lights: [C.vellum, C.gilt],
+      render(g) {
+        const q = 4, w = g.size + 2 * q;
+        let a = "", b = "";
+        for (const [r, c] of modules(g)) {
+          const dot = `<circle cx="${c + q + .5}" cy="${r + q + .5}" r=".44"/>`;
+          ((r * 7 + c * 3) % 5 ? a += dot : b += dot);
+        }
+        return svg(w, `<rect width="${w}" height="${w}" fill="${C.aubergine}"/><g fill="${C.vellum}">${a}</g><g fill="${C.gilt}">${b}</g>` +
+          eyes(g, q, { shape: "circle", ring: C.gilt, inner: C.vellum, ground: C.aubergine }, { shape: "circle", ring: C.vellum, inner: C.gilt, ground: C.aubergine }));
+      },
+    },
+  ];
+
+  // ── Page ───────────────────────────────────────────────────
+  const PRESETS = {
+    short: "isol:id/4e344c1b",
+    pub: "isol:pub:9dd4994d505e788b2cd3289637f834f142ecde46eefe99acfd0bbc969618543c",
+    identity: JSON.stringify({ v: 1, kind: "isol-identity", sk: "3263c085bdee1c80d4941a8e344d121af4eb5aad9edb9c5881327d9dbd28c726", pk: "9dd4994d505e788b2cd3289637f834f142ecde46eefe99acfd0bbc969618543c", relays: ["wss://relay.example"] }),
+  };
+  const payloadEl = document.getElementById("payload"), galleryEl = document.getElementById("gallery"), factsEl = document.getElementById("facts");
+  let level = "H", current = null, rendered = [];
+
+  const MARK_KEY = "isol-qr-marks";
+  let marks = {}; try { marks = JSON.parse(localStorage.getItem(MARK_KEY) || "{}"); } catch (e) {}
+  const saveMarks = () => { try { localStorage.setItem(MARK_KEY, JSON.stringify(marks)); } catch (e) {} };
+
+  function decodeSvg(markup, size) {
+    return new Promise(resolve => {
+      const img = new Image();
+      const url = URL.createObjectURL(new Blob([markup], { type: "image/svg+xml" }));
+      img.onload = () => {
+        const px = Math.max(400, size * 6);
+        const cv = document.createElement("canvas"); cv.width = cv.height = px;
+        const ctx = cv.getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0, px, px);
+        URL.revokeObjectURL(url);
+        try { resolve(IsolQr.decode(ctx.getImageData(0, 0, px, px).data, px, px)); } catch (e) { resolve(null); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    });
+  }
+
+  const riskPill = r => `<span class="pill ${r === "safe" ? "ok" : r === "bold" ? "warn" : "bad"}">${r}</span>`;
+
+  function build() {
+    const text = payloadEl.value;
+    if (!text) { galleryEl.innerHTML = ""; factsEl.textContent = ""; return; }
+    let g;
+    try { g = geometry(IsolQr.encode(text, level)); }
+    catch (e) { factsEl.innerHTML = `<span style="color:var(--color-10)">Too long for a QR code at level ${level}.</span>`; galleryEl.innerHTML = ""; return; }
+    const bytes = new TextEncoder().encode(text).length;
+    factsEl.innerHTML = `<b>${bytes}</b> bytes · version <b>${g.version}</b> · <b>${g.size}×${g.size}</b> modules · level <b>${level}</b>`;
+    current = text;
+    rendered = DESIGNS.map(d => ({ d, markup: d.render(g), size: g.size }));
+    galleryEl.innerHTML = rendered.map(({ d, markup }, i) => {
+      const cr = worst(d.darks, d.lights);
+      return `<article class="qr-card" data-i="${i}">
+        <div class="art" data-act="open" title="Open scan view">${markup}</div>
+        <div class="body">
+          <h3>${d.name} <code>${d.id}</code></h3>
+          <p>${d.idea}</p>
+          <div class="swatches">${[...d.darks, ...d.lights].map(h => `<i style="background:${h}" title="${h}"></i>`).join("")}</div>
+          <div class="checks">${riskPill(d.risk)}
+            <span class="pill ${cr >= 4 ? "ok" : cr >= 3 ? "warn" : "bad"}">contrast ${cr.toFixed(1)}:1</span>
+            <span class="pill wait" data-decode>decoding…</span></div>
+          <div class="row">
+            <span class="mark-lbl">My scanner</span>
+            <div class="mark" data-mark="${d.id}">
+              <button data-v="ok" aria-pressed="${marks[d.id] === "ok"}">✓</button><button data-v="fail" aria-pressed="${marks[d.id] === "fail"}">✗</button>
+            </div>
+            <span class="grow"></span>
+            <button class="btn btn-sm btn-ghost" data-act="open">Scan view</button>
+            <button class="btn btn-sm btn-ghost" data-act="svg">SVG</button>
+            <button class="btn btn-sm btn-ghost" data-act="png">PNG</button>
+          </div>
+        </div>
+      </article>`;
+    }).join("");
+    rendered.forEach(async ({ markup, size }, i) => {
+      const out = await decodeSvg(markup, size);
+      if (current !== text) return;
+      const pill = galleryEl.querySelector(`[data-i="${i}"] [data-decode]`);
+      const ok = out === text;
+      pill.className = `pill solid ${ok ? "ok" : "bad"}`;
+      pill.textContent = ok ? "✓ decodes" : out ? "✗ wrong data" : "✗ doesn't decode";
+    });
+  }
+
+  function download(i, kind) {
+    const { d, markup, size } = rendered[i];
+    const save = (blob, ext) => { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `isol-qr-${d.id}.${ext}`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+    if (kind === "svg") return save(new Blob([markup], { type: "image/svg+xml" }), "svg");
+    const img = new Image(), url = URL.createObjectURL(new Blob([markup], { type: "image/svg+xml" }));
+    img.onload = () => {
+      const px = (size + 14) * 16, cv = document.createElement("canvas"); cv.width = cv.height = px;
+      cv.getContext("2d").drawImage(img, 0, 0, px, px); URL.revokeObjectURL(url);
+      cv.toBlob(b => save(b, "png"));
+    };
+    img.src = url;
+  }
+
+  // Scan view
+  const scan = document.getElementById("scan");
+  let scanIndex = 0;
+  function openScan(i) {
+    scanIndex = (i + rendered.length) % rendered.length;
+    const { d, markup } = rendered[scanIndex];
+    document.getElementById("scan-name").textContent = d.name;
+    const risk = document.getElementById("scan-risk");
+    risk.className = `pill ${d.risk === "safe" ? "ok" : d.risk === "bold" ? "warn" : "bad"}`; risk.textContent = d.risk;
+    document.getElementById("scan-art").innerHTML = markup;
+    document.querySelectorAll("#scan-mark button").forEach(b => b.setAttribute("aria-pressed", marks[d.id] === b.dataset.v));
+    scan.classList.add("open");
+  }
+  const closeScan = () => scan.classList.remove("open");
+  document.getElementById("scan-close").onclick = closeScan;
+  document.getElementById("scan-prev").onclick = () => openScan(scanIndex - 1);
+  document.getElementById("scan-next").onclick = () => openScan(scanIndex + 1);
+  document.getElementById("scan-mark").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    setMark(rendered[scanIndex].d.id, b.dataset.v); openScan(scanIndex);
+  });
+  document.addEventListener("keydown", e => {
+    if (!scan.classList.contains("open")) return;
+    if (e.key === "Escape") closeScan();
+    if (e.key === "ArrowRight") openScan(scanIndex + 1);
+    if (e.key === "ArrowLeft") openScan(scanIndex - 1);
+  });
+
+  function setMark(id, v) {
+    marks[id] = marks[id] === v ? undefined : v; saveMarks();
+    galleryEl.querySelectorAll(`[data-mark="${id}"] button`).forEach(b => b.setAttribute("aria-pressed", marks[id] === b.dataset.v));
+  }
+
+  galleryEl.addEventListener("click", e => {
+    const card = e.target.closest(".qr-card"); if (!card) return;
+    const i = +card.dataset.i;
+    const markBtn = e.target.closest("[data-mark] button");
+    if (markBtn) return setMark(markBtn.closest("[data-mark]").dataset.mark, markBtn.dataset.v);
+    const act = e.target.closest("[data-act]")?.dataset.act;
+    if (act === "open") openScan(i);
+    else if (act === "svg" || act === "png") download(i, act);
+  });
+
+  document.getElementById("ec").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    level = b.dataset.ec;
+    document.querySelectorAll("#ec button").forEach(x => x.setAttribute("aria-pressed", x === b));
+    build();
+  });
+  document.getElementById("presets").addEventListener("click", e => {
+    const p = e.target.closest("button")?.dataset.preset; if (!p) return;
+    payloadEl.value = PRESETS[p]; build();
+  });
+  let t; payloadEl.addEventListener("input", () => { clearTimeout(t); t = setTimeout(build, 250); });
+
+  // Sample the print at module resolution for the mosaic (one pixel per module), then draw everything.
+  const src = new Image();
+  src.onload = () => {
+    const cv = document.createElement("canvas"), ctx = cv.getContext("2d", { willReadFrequently: true });
+    let data = null;
+    sample = (r, c, n) => {
+      if (!data || cv.width !== n) { cv.width = cv.height = n; ctx.drawImage(src, 0, 0, n, n); data = ctx.getImageData(0, 0, n, n).data; }
+      const i = (r * n + c) * 4; return [data[i], data[i + 1], data[i + 2]];
+    };
+    build();
+  };
+  // Deep links for testing: ?preset=identity&ec=Q
+  const params = new URLSearchParams(location.search);
+  payloadEl.value = PRESETS[params.get("preset")] || PRESETS.pub;
+  if (/^[LMQH]$/.test(params.get("ec") || "")) {
+    level = params.get("ec");
+    document.querySelectorAll("#ec button").forEach(x => x.setAttribute("aria-pressed", x.dataset.ec === level));
+  }
+  src.src = window.ISOLDE_JPG;
+</script>
+</body>
+</html>

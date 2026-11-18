@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Network Settings POC</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/components.css">
+<style>
+  .frame { max-width: 1280px; }
+  /* ───────────── Component: network settings (.net) ───────────── */
+  .net { width: 100%; max-width: 1120px; height: 860px; display: grid; grid-template-columns: 230px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; background: var(--color-1); border: var(--line) solid var(--rule); overflow: hidden; }
+  .stage[data-width=phone] .net { max-width: 390px; height: 860px; grid-template-columns: minmax(0, 1fr); }
+  .narrow .side { display: none; }
+
+  /* Side navigation */
+  .side { grid-row: 1 / span 2; border-right: var(--line) solid var(--rule-soft); padding: 18px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .side h2 { margin: 0 10px 14px; font-size: 20px; font-weight: 500; }
+  .side a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--text-muted); text-decoration: none; font-size: 15px; cursor: pointer; }
+  .side a:hover { background: var(--color-3); color: var(--text); }
+  .side a[aria-current=true] { background: var(--color-3); color: var(--text); font-weight: 500; }
+  .side a svg.i { width: 18px; height: 18px; }
+  .side .gap { flex: 1; }
+  .side .live { margin: 0 6px; padding: 10px; border-radius: 10px; background: var(--color-3); font-size: 13px; color: var(--text-muted); display: grid; gap: 4px; }
+  .side .live b { color: var(--text); font-weight: 500; font-family: var(--font-mono); font-size: 13.5px; }
+  .side .live div { display: flex; justify-content: space-between; }
+
+  .main { overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(101,88,68,.3) transparent; padding: 0 28px 40px; min-width: 0; }
+  .narrow .main { padding: 0 14px 30px; }
+  .page-head { position: sticky; top: 0; z-index: 2; background: var(--color-1); padding: 20px 0 12px; border-bottom: 1px solid var(--rule-soft); margin-bottom: 8px; }
+  .page-head h1 { margin: 0; font-size: 26px; font-weight: 500; }
+  .page-head p { margin: 4px 0 0; color: var(--text-muted); font-size: 15px; }
+  .narrow .page-head .jump { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin-top: 10px; }
+  .page-head .jump { display: none; }
+  .page-head .jump a { flex: none; height: 28px; padding: 0 10px; border: 1px solid var(--rule-soft); border-radius: 999px; font-size: 13px; color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; }
+
+  /* Live strip */
+  .now { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 18px 0 8px; }
+  .narrow .now { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat { padding: 12px 14px; border: 1px solid var(--rule-soft); border-radius: 10px; }
+  .stat small { display: block; font-family: var(--font-display); font-size: 10.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--text-muted); }
+  .stat b { display: block; margin-top: 4px; font-family: var(--font-mono); font-size: 21px; font-weight: 400; color: var(--text); }
+  .stat b span { font-size: 14px; color: var(--text-faint); }
+  .stat .bar { height: 4px; border-radius: 2px; background: var(--color-3); margin-top: 8px; overflow: hidden; }
+  .stat .bar i { display: block; height: 100%; background: var(--color-13); border-radius: 2px; transition: width .6s; }
+  .stat .bar i.hot { background: var(--color-2); }
+
+  /* Sections and rows */
+  .sec { padding-top: 26px; scroll-margin-top: 90px; }
+  .sec > header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .sec > header h2 { margin: 0; font-size: 21px; font-weight: 500; }
+  .sec > header .lib { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-faint); }
+  .sec > p.lede { margin: 0 0 12px; color: var(--text-muted); font-size: 15px; max-width: 70ch; }
+  .box { border: var(--line) solid var(--rule-soft); border-radius: 12px; padding: 0 16px; background: var(--color-1); }
+  .box + .box { margin-top: 12px; }
+  .box > h3 { margin: 14px 0 0; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--text-muted); }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 20px; align-items: center; padding: 14px 0; }
+  .row + .row { border-top: 1px solid rgba(199,174,141,.5); }
+  .box > h3 + .row { border-top: 0; }
+  .row .txt b { display: block; font-weight: 500; font-size: 15.5px; }
+  .row .txt small { display: block; font-size: 13.5px; color: var(--text-muted); line-height: 1.4; margin-top: 2px; }
+  .row .txt code.opt { font-family: var(--font-mono); font-size: 12px; color: var(--text-faint); }
+  .narrow .row { grid-template-columns: minmax(0, 1fr); }
+  .narrow .row > .num, .narrow .row > .seg, .narrow .row > .switch { justify-self: start; }
+  .row .wide { grid-column: 1 / -1; }
+  .src { display: inline-flex; align-items: center; height: 17px; padding: 0 6px; margin-left: 6px; border-radius: 999px; font-family: var(--font-display); font-size: 9.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; vertical-align: 2px; }
+  .src.wt { background: rgba(82,143,141,.16); color: #3f716f; }
+  .src.core { background: rgba(193,154,75,.2); color: #8a6a26; }
+  .src.isol { background: rgba(188,77,45,.12); color: var(--color-10); }
+
+  /* Controls */
+  .num { display: inline-flex; align-items: center; border: var(--line) solid var(--color-4); border-radius: 10px; overflow: hidden; height: 38px; }
+  .num button { width: 34px; height: 100%; border: 0; background: none; cursor: pointer; font-size: 18px; color: var(--text-muted); }
+  .num button:hover { background: var(--color-3); color: var(--text); }
+  .num input { width: 64px; height: 100%; border: 0; border-left: 1px solid var(--color-4); border-right: 1px solid var(--color-4); background: none; text-align: center; font-family: var(--font-mono); font-size: 16px; color: var(--text); -moz-appearance: textfield; }
+  .num input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .num input:focus { outline: none; background: var(--color-1); }
+  .num .unit { padding: 0 10px; font-size: 13px; color: var(--text-muted); }
+  .speed { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+  .narrow .speed { justify-content: flex-start; }
+  .speed .num input { width: 72px; }
+  .speed select { height: 38px; border: var(--line) solid var(--color-4); border-radius: 10px; background: var(--color-1); padding: 0 8px; font: inherit; font-size: 14px; color: var(--text); }
+  .speed.off .num, .speed.off select { opacity: .4; pointer-events: none; }
+  .chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--text-muted); cursor: pointer; }
+  .chk input { accent-color: var(--color-15); }
+  .switch { appearance: none; width: 42px; height: 24px; margin: 0; border-radius: 999px; background: var(--color-7); position: relative; cursor: pointer; transition: background .2s; flex: none; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--color-1); transition: transform .2s; }
+  .switch:checked { background: var(--color-13); }
+  .switch:checked::after { transform: translateX(18px); }
+  .seg { display: inline-flex; border: var(--line) solid var(--rule); border-radius: 999px; overflow: hidden; flex-wrap: wrap; }
+  .seg button { border: 0; background: none; padding: 7px 13px; cursor: pointer; font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: .04em; }
+  .seg button + button { border-left: 1px solid var(--rule-soft); }
+  .seg button[aria-pressed=true] { background: var(--color-15); color: var(--color-1); }
+  .text { height: 38px; width: 100%; padding: 0 12px; border: var(--line) solid var(--color-4); border-radius: 10px; background: var(--color-1); font-family: var(--font-mono); font-size: 14.5px; color: var(--text); }
+  .text:focus { outline: none; border-color: var(--color-10); }
+  .fields { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; }
+  .narrow .fields { grid-template-columns: 1fr; }
+  .fields label { display: grid; gap: 4px; font-size: 12.5px; color: var(--text-muted); }
+  .sub { padding: 0 0 14px 0; margin-top: -4px; }
+  .note { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; background: var(--color-3); font-size: 13.5px; color: var(--text); }
+  .note svg.i { width: 17px; height: 17px; flex: none; margin-top: 1px; color: var(--color-9); }
+  .note.warn svg.i { color: var(--color-10); }
+
+  /* Lists: servers, trackers, swarms */
+  .list { display: grid; }
+  .item { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto auto; gap: 4px 12px; align-items: center; padding: 11px 0; }
+  .item + .item { border-top: 1px solid rgba(199,174,141,.5); }
+  .item .dot { width: 10px; height: 10px; border-radius: 50%; justify-self: center; }
+  .dot.ok { background: var(--color-13); box-shadow: 0 0 0 3px rgba(94,105,80,.2); }
+  .dot.slow { background: var(--color-14); box-shadow: 0 0 0 3px rgba(193,154,75,.2); }
+  .dot.down { background: var(--color-10); box-shadow: 0 0 0 3px rgba(188,77,45,.18); }
+  .dot.off { background: var(--color-7); }
+  .item .u { font-family: var(--font-mono); font-size: 14.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item .u small, .item .nm small { display: block; font-family: var(--font-body); font-size: 12.5px; color: var(--text-muted); white-space: normal; }
+  .item .st { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-muted); text-align: right; white-space: nowrap; }
+  .icon-btn { width: 32px; height: 32px; display: inline-grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--text-muted); cursor: pointer; }
+  .icon-btn:hover { background: var(--color-3); color: var(--text); }
+  .icon-btn svg.i { width: 17px; height: 17px; }
+  .add-row { display: flex; gap: 8px; padding: 12px 0 14px; border-top: 1px solid rgba(199,174,141,.5); }
+  .add-row .text { flex: 1; }
+  .add-row .err { font-size: 12.5px; color: var(--color-10); }
+  .link-btn { border: 0; background: none; padding: 0; cursor: pointer; font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: .08em; color: var(--color-13); }
+
+  .swarm { grid-template-columns: 34px minmax(0, 1fr) auto auto; }
+  .swarm .kind { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--color-3); color: var(--color-15); }
+  .swarm .kind svg.i { width: 18px; height: 18px; }
+  .swarm .nm { min-width: 0; }
+  .swarm .nm b { font-weight: 500; font-size: 15px; }
+  .swarm .nm code { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-faint); }
+  .peers { display: grid; gap: 3px; justify-items: end; font-family: var(--font-mono); font-size: 12.5px; color: var(--text-muted); white-space: nowrap; }
+  .peers .pbar { width: 84px; height: 4px; border-radius: 2px; background: var(--color-3); overflow: hidden; }
+  .peers .pbar i { display: block; height: 100%; background: var(--color-11); }
+  .swarm.paused .nm, .swarm.paused .peers { opacity: .5; }
+  .narrow .swarm { grid-template-columns: 34px minmax(0, 1fr) auto; }
+  .narrow .swarm .peers { grid-column: 2; justify-items: start; }
+
+  /* Torrent profiles */
+  .profiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border: var(--line) solid var(--rule-soft); border-radius: 12px 12px 0 0; overflow: hidden; }
+  .profiles button { border: 0; background: none; padding: 12px 14px 11px; text-align: left; cursor: pointer; display: grid; gap: 2px; position: relative; }
+  .profiles button + button { border-left: 1px solid var(--rule-soft); }
+  .profiles button b { font-weight: 500; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+  .profiles button b i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+  .profiles button small { font-size: 12.5px; color: var(--text-muted); }
+  .profiles button[aria-selected=true] { background: var(--color-3); }
+  .profiles button[aria-selected=true]::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--c); }
+  .narrow .profiles button small { display: none; }
+  .profile-card { border-top-left-radius: 0; border-top-right-radius: 0; border-top: 0; }
+  .profiles + .box { margin-top: 0; }
+  .what { display: flex; flex-wrap: wrap; gap: 6px; padding: 14px 0 4px; }
+  .what span { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; background: var(--color-3); font-size: 13px; }
+  .what span code { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+
+  /* Save bar */
+  .savebar { grid-column: 2; display: flex; align-items: center; gap: 12px; padding: 10px 28px; border-top: var(--line) solid var(--rule-soft); background: var(--color-1); }
+  .narrow .savebar { grid-column: 1; padding: 10px 14px; }
+  .savebar .msg { flex: 1; font-size: 14px; color: var(--text-muted); min-width: 0; }
+  .savebar .msg b { color: var(--text); font-weight: 500; }
+  .savebar.clean .msg { color: var(--color-13); }
+  .savebar.clean .act { display: none; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/></symbol>
+  <symbol id="i-rtc" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.3 11l7.4-3.8M8.3 13l7.4 3.8"/></symbol>
+  <symbol id="i-relay" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="6" rx="1.5"/><rect x="4" y="14" width="16" height="6" rx="1.5"/><path d="M7.5 7h.01M7.5 17h.01"/></symbol>
+  <symbol id="i-tracker" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M5 5a10 10 0 0 0 0 14M19 5a10 10 0 0 1 0 14"/></symbol>
+  <symbol id="i-swarm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2"/><circle cx="5" cy="7" r="1.8"/><circle cx="19" cy="7" r="1.8"/><circle cx="6" cy="18" r="1.8"/><circle cx="18" cy="18" r="1.8"/><path d="M6.6 8l3.7 2.7M17.4 8l-3.7 2.7M7.5 17l3-3.4M16.5 17l-3-3.4"/></symbol>
+  <symbol id="i-torrent" viewBox="0 0 24 24"><path d="M12 3v11M7.5 9.5L12 14l4.5-4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="7" y="5.5" width="3.5" height="13" rx="1"/><rect x="13.5" y="5.5" width="3.5" height="13" rx="1"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.2v.3"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 12.5c0-4 3.5-7 8-7s8 3 8 7-3.5 7-8 7c-1.3 0-2.6-.3-3.7-.7L4 20l1.2-3.6A6.6 6.6 0 0 1 4 12.5z"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2"/><path d="M3 19.5a6 6 0 0 1 12 0"/><path d="M16 5.6a3.2 3.2 0 0 1 0 5.8M21 19.5a6 6 0 0 0-3.5-5.4"/></symbol>
+  <symbol id="i-board" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-thread" viewBox="0 0 24 24"><path d="M5 5h14M5 10h14M5 15h9M5 20h6"/></symbol>
+</svg>
+
+<div class="frame">
+  <header class="masthead">
+    <a href="../index.html">← Isol POCs</a>
+    <h1>Network settings</h1>
+    <p>How this device connects: WebRTC connections and swarms, the relay, the trackers, and how WebTorrent shares files, with stronger settings for files you made or keep for the network.</p>
+  </header>
+
+  <section class="sect">
+    <div class="toolbar">
+      <div><span class="lbl">Width</span>
+        <div class="segmented" role="group" aria-label="Width" id="width-ctl">
+          <button data-v="wide" aria-pressed="true">Wide</button>
+          <button data-v="phone" aria-pressed="false">Phone</button>
+        </div>
+      </div>
+      <div><span class="lbl">Where each setting lives</span>
+        <span class="src core">isol-core</span><span class="src wt">WebTorrent</span><span class="src isol">Isol</span>
+      </div>
+    </div>
+    <div class="stage" id="stage" data-width="wide"><div class="net" id="net"></div></div>
+  </section>
+
+  <section class="sect">
+    <p class="eyebrow">Design notes</p>
+    <h2>Why it looks like this</h2>
+    <div class="notes">
+      <div><h3>Live numbers first</h3><p>The top of the page shows what the network is doing right now: connections against the limit, swarms, torrents, speeds. Every limit below has a number to compare against.</p></div>
+      <div><h3>Where a setting lives</h3><p>Each setting carries a small label: <b>isol-core</b> (swarms, signalling, RTC), <b>WebTorrent</b> (a real client or torrent option, named in mono), or <b>Isol</b> (a rule the app enforces on top). It keeps the design honest about what's built in.</p></div>
+      <div><h3>Block unknown peers</h3><p>Swarms find peers through the trackers but only connect on purpose, so blocking is cheap: unknown keys are seen and ignored. Torrent peers have no identity, so file sharing isn't affected; the setting says so.</p></div>
+      <div><h3>The relay</h3><p>WebRTC uses STUN to find a direct route. A TURN relay carries the data when a direct route fails, and "Always use the relay" hides your IP address from peers at the cost of speed.</p></div>
+      <div><h3>Three kinds of files</h3><p>Everything else, files you made (Priority), and files you keep for the network (Important: kept threads, synced boards). Each has its own peers, speeds, upload slots and seeding rule, and the global speed limit still caps the total.</p></div>
+      <div><h3>Apply, then reconnect</h3><p>Network changes need swarms and torrents to reconnect, so they don't apply on every keystroke. A bar at the bottom counts changes and applies them together.</p></div>
+    </div>
+  </section>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const net = $("net"), stage = $("stage");
+  const icon = (id, cls = "") => `<svg class="i ${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const SRC = { core: `<span class="src core">isol-core</span>`, wt: `<span class="src wt">WebTorrent</span>`, isol: `<span class="src isol">Isol</span>` };
+
+  // ── Settings (with the library defaults where there is one) ──
+  const DEFAULTS = {
+    rtcMax: 40, rtcPerSwarm: 8, offers: 5, swarmMax: 12, swarmWhenFull: "idle", blockUnknown: false, blockWho: "contacts",
+    stun: ["stun:stun.l.google.com:19302", "stun:global.stun.twilio.com:3478"],
+    turnUrl: "", turnUser: "", turnPass: "", relayOnly: false,
+    upAll: { on: false, v: 2, u: "MB/s" }, downAll: { on: false, v: 10, u: "MB/s" }, webSeeds: true,
+    profiles: {
+      default:   { peers: 20, up: { on: true, v: 200, u: "KB/s" }, down: { on: false, v: 5, u: "MB/s" }, slots: 4, seed: "ratio", ratio: 1, strategy: "sequential" },
+      priority:  { peers: 55, up: { on: false, v: 2, u: "MB/s" }, down: { on: false, v: 10, u: "MB/s" }, slots: 10, seed: "always", ratio: 2, strategy: "rarest" },
+      important: { peers: 40, up: { on: true, v: 1, u: "MB/s" }, down: { on: false, v: 10, u: "MB/s" }, slots: 8, seed: "always", ratio: 2, strategy: "rarest" },
+    },
+  };
+  const clone = o => JSON.parse(JSON.stringify(o));
+  let saved = clone(DEFAULTS), S = clone(DEFAULTS);
+  const UI = { profile: "priority", section: "now", trackerInput: "", trackerErr: "" };
+
+  const TRACKERS = [
+    { url: "wss://tracker.openwebtorrent.com", state: "ok", note: "312 peers seen · 48 ms" },
+    { url: "wss://tracker.webtorrent.dev", state: "ok", note: "141 peers seen · 95 ms" },
+    { url: "wss://tracker.btorrent.xyz", state: "slow", note: "Answering slowly · 1.8 s" },
+    { url: "wss://tracker.files.fm:7073/announce", state: "down", note: "Can't connect · retrying in 40 s" },
+  ];
+  const SWARMS = [
+    { kind: "chat", name: "Chat with Isolde", hash: "a41f…09c2", peers: 2, known: 2, limit: null, paused: false },
+    { kind: "users", name: "Cornwall (group)", hash: "77be…e310", peers: 4, known: 5, limit: null, paused: false },
+    { kind: "board", name: "Prints · catalog", hash: "c02d…41aa", peers: 8, known: 23, limit: 8, paused: false },
+    { kind: "board", name: "Gardens · catalog", hash: "9e11…b7f0", peers: 5, known: 9, limit: null, paused: false },
+    { kind: "thread", name: "Thread #4021 (kept)", hash: "51c9…8d2e", peers: 6, known: 21, limit: null, paused: false },
+    { kind: "link", name: "Linked browser · Firefox", hash: "e0a7…3b19", peers: 1, known: 1, limit: null, paused: true },
+  ];
+  const PROFILES = [
+    ["default", "Everything else", "Files you download from others", "#A89C85"],
+    ["priority", "Priority", "Files you created", "#EC4823"],
+    ["important", "Important", "Files you keep for the network", "#C19A4B"],
+  ];
+  const WHAT = {
+    default: [["Photos and voice notes in chats", "chat media"], ["Threads you're reading", "boards"], ["Shared files", "downloads"]],
+    priority: [["Your photos and voice notes", "sent"], ["Your threads and replies", "boards"], ["Your identity transfer files", "move identity"]],
+    important: [["Kept threads", "seed button"], ["Synced board catalogs", "sync"], ["Files you pinned", "keep"]],
+  };
+
+  // Live numbers (mock, gently moving)
+  const LIVE = { rtc: 26, swarms: 5, torrents: 14, seeding: 9, up: 420, down: 1300 };
+
+  // ── Controls ───────────────────────────────────────────────
+  const get = path => path.split(".").reduce((o, k) => o[k], S);
+  const set = (path, v) => { const ks = path.split("."), last = ks.pop(); ks.reduce((o, k) => o[k], S)[last] = v; };
+  const num = (path, unit = "", min = 0, max = 999) => `<span class="num"><button data-step="${path}" data-d="-1" data-min="${min}" data-max="${max}" aria-label="Less">−</button><input data-num="${path}" value="${get(path)}" inputmode="numeric" aria-label="${path}"><button data-step="${path}" data-d="1" data-min="${min}" data-max="${max}" aria-label="More">+</button>${unit ? `<span class="unit">${unit}</span>` : ""}</span>`;
+  const sw = path => `<input type="checkbox" class="switch" data-sw="${path}" ${get(path) ? "checked" : ""}>`;
+  const seg = (path, opts) => `<span class="seg" role="group">${opts.map(([v, l]) => `<button data-seg="${path}" data-v="${v}" aria-pressed="${get(path) === v}">${l}</button>`).join("")}</span>`;
+  const speed = path => { const s = get(path); return `<span class="speed${s.on ? "" : " off"}"><label class="chk"><input type="checkbox" data-limit="${path}" ${s.on ? "checked" : ""}>Limit</label>${num(path + ".v", "", 1, 9999)}<select data-unit="${path}">${["KB/s", "MB/s"].map(u => `<option ${s.u === u ? "selected" : ""}>${u}</option>`).join("")}</select>${s.on ? "" : `<span class="unit" style="font-size:13px;color:var(--text-muted)">Unlimited</span>`}</span>`; };
+  const row = (title, desc, control, src = "", opt = "", wide = false) => `<div class="row"><div class="txt"><b>${title}${src}</b>${desc ? `<small>${desc}${opt ? ` <code class="opt">${opt}</code>` : ""}</small>` : ""}</div>${wide ? "" : control}${wide ? `<div class="wide">${control}</div>` : ""}</div>`;
+
+  // ── Sections ───────────────────────────────────────────────
+  const fmtSpeed = kb => kb >= 1000 ? `${(kb / 1000).toFixed(1)} <span>MB/s</span>` : `${Math.round(kb)} <span>KB/s</span>`;
+  function nowHtml() {
+    const pct = Math.min(100, LIVE.rtc / S.rtcMax * 100);
+    return `<div class="now" id="now">
+      <div class="stat"><small>WebRTC</small><b>${LIVE.rtc}<span> / ${S.rtcMax}</span></b><div class="bar"><i class="${pct > 85 ? "hot" : ""}" style="width:${pct}%"></i></div></div>
+      <div class="stat"><small>Swarms</small><b>${SWARMS.filter(s => !s.paused).length}<span> active</span></b></div>
+      <div class="stat"><small>Torrents</small><b>${LIVE.torrents}<span> · ${LIVE.seeding} seeding</span></b></div>
+      <div class="stat"><small>Upload</small><b>${fmtSpeed(LIVE.up)}</b></div>
+      <div class="stat"><small>Download</small><b>${fmtSpeed(LIVE.down)}</b></div>
+    </div>`;
+  }
+
+  function rtcHtml() {
+    return `<section class="sec" id="sec-rtc"><header><h2>Connections</h2><span class="lib">WebRTC</span></header>
+      <p class="lede">Direct connections to other devices. Every chat, group, board and linked browser is a swarm, and each swarm holds some of these connections.</p>
+      <div class="box">
+        ${row("Connections in total", "The most WebRTC connections open at once, across every swarm.", num("rtcMax", "", 4, 200), SRC.isol)}
+        ${row("Connections per swarm", "So one busy board can't take them all.", num("rtcPerSwarm", "", 1, 50), SRC.isol)}
+        ${row("Offers per announce", "How many connection offers go out with each tracker announce. More finds peers faster and costs more.", num("offers", "", 1, 20), SRC.core, "offersPerAnnounce")}
+      </div>
+      <div class="box">
+        ${row("Block unknown peers", S.blockUnknown ? "Peers that aren't in your address book are seen in swarms but never connected to." : "Connect to anyone in a swarm, known or not.", sw("blockUnknown"), SRC.isol)}
+        ${S.blockUnknown ? `<div class="sub">${row("Who counts as known", "", seg("blockWho", [["contacts", "Anyone in contacts"], ["trusted", "Trusted"], ["verified", "Verified"]]))}
+          <p class="note">${icon("info")}File sharing isn't affected: torrent peers don't have an identity. Public boards will only show what your known peers have.</p></div>` : ""}
+      </div>
+    </section>`;
+  }
+
+  function relayHtml() {
+    const turnOk = !S.turnUrl || /^turns?:/.test(S.turnUrl);
+    return `<section class="sec" id="sec-relay"><header><h2>Relay</h2><span class="lib">ICE servers · rtcConfig.iceServers</span></header>
+      <p class="lede">STUN helps two devices find a direct route. When there isn't one, a TURN relay carries the data between them.</p>
+      <div class="box"><h3>STUN servers</h3>
+        <div class="list">${S.stun.map((u, i) => `<div class="item"><span class="dot ok"></span><span class="u">${esc(u)}</span><span></span><button class="icon-btn" data-del-stun="${i}" aria-label="Remove">${icon("x")}</button></div>`).join("")}</div>
+        <div class="add-row"><input class="text" id="stun-in" placeholder="stun:host:port"><button class="btn btn-sm" data-act="add-stun">${icon("plus")}Add</button></div>
+      </div>
+      <div class="box"><h3>TURN relay</h3>
+        <div class="row"><div class="txt wide"><div class="fields">
+          <label>Server<input class="text" data-text="turnUrl" value="${esc(S.turnUrl)}" placeholder="turn:relay.example.org:3478"></label>
+          <label>Username<input class="text" data-text="turnUser" value="${esc(S.turnUser)}" placeholder="optional"></label>
+          <label>Password<input class="text" type="password" data-text="turnPass" value="${esc(S.turnPass)}" placeholder="optional"></label>
+        </div>${turnOk ? "" : `<small style="color:var(--color-10);margin-top:6px">A relay address starts with turn: or turns:</small>`}</div></div>
+        ${row("Always use the relay", S.turnUrl ? "Peers only ever see the relay's address, never yours. Slower, and the relay carries all your traffic." : "Add a TURN server first.", `<input type="checkbox" class="switch" data-sw="relayOnly" ${S.relayOnly ? "checked" : ""} ${S.turnUrl ? "" : "disabled"}>`, SRC.core, "iceTransportPolicy: 'relay'")}
+      </div>
+    </section>`;
+  }
+
+  function trackersHtml() {
+    return `<section class="sec" id="sec-trackers"><header><h2>Trackers</h2><span class="lib">tracker.announce · Trackers</span></header>
+      <p class="lede">Trackers introduce peers to each other. Swarms and torrents both announce to this list; they never see what you share, only who's looking for the same thing.</p>
+      <div class="box"><div class="list">${TRACKERS.map((t, i) => `
+        <div class="item"><span class="dot ${t.state}" title="${t.state}"></span><span class="u">${esc(t.url)}<small>${t.note}</small></span><span class="st">${t.state === "ok" ? "connected" : t.state === "slow" ? "slow" : t.state === "down" ? "offline" : ""}</span><button class="icon-btn" data-del-tracker="${i}" aria-label="Remove tracker">${icon("x")}</button></div>`).join("")}</div>
+        <div class="add-row"><input class="text" id="tracker-in" placeholder="wss://tracker.example.org" value="${esc(UI.trackerInput)}"><button class="btn btn-sm" data-act="add-tracker">${icon("plus")}Add</button></div>
+        ${UI.trackerErr ? `<p class="note warn" style="margin-top:0">${icon("alert")}${UI.trackerErr}</p>` : ""}
+        <div style="padding:0 0 14px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--text-muted)"><span>Browsers can only reach WebSocket trackers (wss://).</span><button class="link-btn" data-act="reset-trackers">Reset to defaults</button></div>
+      </div>
+    </section>`;
+  }
+
+  const KIND_ICON = { chat: "chat", users: "users", board: "board", thread: "thread", link: "link" };
+  function swarmsHtml() {
+    return `<section class="sec" id="sec-swarms"><header><h2>Swarms</h2><span class="lib">isol-core · Swarm</span></header>
+      <p class="lede">Everyone announcing the same thing to the same trackers. Pause a swarm to drop its connections without leaving it, or give a busy one its own limit.</p>
+      <div class="box">
+        ${row("Swarms open at once", `${SWARMS.filter(x => !x.paused).length} of ${S.swarmMax} open now. Each open swarm keeps talking to the trackers, even when nothing is happening.`, num("swarmMax", "", 1, 100), SRC.isol)}
+        ${row("When the limit is reached", S.swarmWhenFull === "idle" ? "The swarm that's been quiet the longest is paused to make room. It resumes when you open it." : "New swarms wait until one is closed or paused.", seg("swarmWhenFull", [["idle", "Pause the quietest"], ["wait", "Wait"]]), SRC.isol)}
+      </div>
+      <div class="box"><div class="list">${SWARMS.map((s, i) => `
+        <div class="item swarm${s.paused ? " paused" : ""}">
+          <span class="kind">${icon(KIND_ICON[s.kind])}</span>
+          <span class="nm"><b>${esc(s.name)}</b><code> ${s.hash}</code><small>${s.paused ? "Paused" : `${s.known} found · ${s.peers} connected`}${s.limit ? ` · limit ${s.limit}` : ""}</small></span>
+          <span class="peers">${s.paused ? "—" : `${s.peers} / ${s.limit || S.rtcPerSwarm}`}<span class="pbar"><i style="width:${s.paused ? 0 : Math.min(100, s.peers / (s.limit || S.rtcPerSwarm) * 100)}%"></i></span></span>
+          <button class="icon-btn" data-pause="${i}" aria-label="${s.paused ? "Resume" : "Pause"} swarm">${icon(s.paused ? "play" : "pause")}</button>
+        </div>`).join("")}</div></div>
+    </section>`;
+  }
+
+  function torrentsHtml() {
+    const p = UI.profile, base = `profiles.${p}`, [, pname, , pcol] = PROFILES.find(x => x[0] === p);
+    return `<section class="sec" id="sec-torrents"><header><h2>File sharing</h2><span class="lib">WebTorrent</span></header>
+      <p class="lede">How files move. The global limits cap everything; each kind of file then gets its own share of peers, speed and seeding.</p>
+      <div class="box"><h3>For all files</h3>
+        ${row("Upload speed", "Across every torrent at once.", speed("upAll"), SRC.wt, "uploadLimit · throttleUpload()")}
+        ${row("Download speed", "", speed("downAll"), SRC.wt, "downloadLimit · throttleDownload()")}
+        ${row("Web seeds", "Also download from plain web servers when a torrent lists them.", sw("webSeeds"), SRC.wt, "webSeeds")}
+      </div>
+      <div style="margin-top:12px" class="profiles" role="tablist">${PROFILES.map(([k, l, sub, c]) => `<button role="tab" data-profile="${k}" aria-selected="${p === k}" style="--c:${c}"><b><i></i>${l}</b><small>${sub}</small></button>`).join("")}</div>
+      <div class="box profile-card">
+        <div class="what">${WHAT[p].map(([t, c]) => `<span>${t} <code>${c}</code></span>`).join("")}</div>
+        ${row("Peers per file", "Connections to other devices for one file.", num(base + ".peers", "", 1, 200), SRC.wt, "maxConns")}
+        ${row("Upload speed", `For ${pname.toLowerCase()} files, within the global limit.`, speed(base + ".up"), SRC.isol)}
+        ${row("Download speed", "", speed(base + ".down"), SRC.isol)}
+        ${row("Upload slots", "How many peers receive pieces from you at the same time.", num(base + ".slots", "", 1, 50), SRC.wt, "uploads")}
+        ${row("Keep seeding", get(base + ".seed") === "ratio" ? `Stop once you've uploaded ${get(base + ".ratio")}× what you downloaded.` : get(base + ".seed") === "always" ? "Seed whenever this device is online." : get(base + ".seed") === "never" ? "Stop sharing as soon as the file is complete." : "",
+          seg(base + ".seed", [["always", "Always"], ["ratio", "Until a ratio"], ["never", "Never"]]), SRC.isol)}
+        ${get(base + ".seed") === "ratio" ? row("Ratio", "Uploaded ÷ downloaded.", num(base + ".ratio", "×", 1, 20), SRC.isol) : ""}
+        ${row("Piece order", get(base + ".strategy") === "rarest" ? "Fetch the rarest pieces first: best for keeping a file alive in the network." : "Fetch pieces in order: best for opening a file before it's complete.", seg(base + ".strategy", [["sequential", "In order"], ["rarest", "Rarest first"]]), SRC.wt, "strategy")}
+      </div>
+    </section>`;
+  }
+
+  const SECTIONS = [["now", "Overview", "gauge"], ["rtc", "Connections", "rtc"], ["relay", "Relay", "relay"], ["trackers", "Trackers", "tracker"], ["swarms", "Swarms", "swarm"], ["torrents", "File sharing", "torrent"]];
+  function changes() { return diff(saved, S); }
+  function diff(a, b, n = 0) { if (typeof a !== "object" || a === null) return a === b ? 0 : 1; return Object.keys({ ...a, ...b }).reduce((t, k) => t + diff(a[k], b[k]), 0); }
+
+  function render() {
+    const narrow = stage.dataset.width === "phone" || net.clientWidth < 760;
+    net.classList.toggle("narrow", narrow);
+    const scroll = net.querySelector(".main")?.scrollTop;
+    const n = changes();
+    net.innerHTML = `
+      <nav class="side" aria-label="Settings sections"><h2>Network</h2>
+        ${SECTIONS.map(([k, l, ic]) => `<a data-go="${k}" aria-current="${UI.section === k}">${icon(ic)}${l}</a>`).join("")}
+        <span class="gap"></span>
+        <div class="live"><div><span>WebRTC</span><b>${LIVE.rtc}/${S.rtcMax}</b></div><div><span>Up</span><b>${(LIVE.up / 1000).toFixed(2)} MB/s</b></div><div><span>Down</span><b>${(LIVE.down / 1000).toFixed(2)} MB/s</b></div></div>
+      </nav>
+      <div class="main" id="main">
+        <div class="page-head" id="sec-now"><h1>Network</h1><p>How this device connects and shares. Changes apply after reconnecting.</p>
+          <div class="jump">${SECTIONS.slice(1).map(([k, l]) => `<a data-go="${k}">${l}</a>`).join("")}</div></div>
+        ${nowHtml()}${rtcHtml()}${relayHtml()}${trackersHtml()}${swarmsHtml()}${torrentsHtml()}
+      </div>
+      <div class="savebar${n ? "" : " clean"}"><span class="msg">${n ? `<b>${n} change${n === 1 ? "" : "s"}</b> · applying reconnects swarms and torrents` : "All changes applied"}</span>
+        <span class="act"><button class="btn btn-sm btn-ghost" data-act="discard">Discard</button> <button class="btn btn-sm btn-primary" data-act="apply">Apply</button></span></div>`;
+    if (scroll != null) $("main").scrollTop = scroll;
+  }
+
+  // ── Events ─────────────────────────────────────────────────
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  net.addEventListener("click", e => {
+    const t = e.target;
+    const st = t.closest("[data-step]"); if (st) { const p = st.dataset.step; set(p, clamp(+get(p) + +st.dataset.d, +st.dataset.min, +st.dataset.max)); return render(); }
+    const sg = t.closest("[data-seg]"); if (sg) { set(sg.dataset.seg, sg.dataset.v); return render(); }
+    const pr = t.closest("[data-profile]"); if (pr) { UI.profile = pr.dataset.profile; return render(); }
+    const pa = t.closest("[data-pause]"); if (pa) { const s = SWARMS[+pa.dataset.pause]; s.paused = !s.paused; return render(); }
+    const ds = t.closest("[data-del-stun]"); if (ds) { S.stun.splice(+ds.dataset.delStun, 1); return render(); }
+    const dt = t.closest("[data-del-tracker]"); if (dt) { TRACKERS.splice(+dt.dataset.delTracker, 1); return render(); }
+    const go = t.closest("[data-go]"); if (go) { UI.section = go.dataset.go; const el = $("sec-" + go.dataset.go); render(); $("sec-" + go.dataset.go)?.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+    const a = t.closest("[data-act]"); if (!a) return;
+    const act = a.dataset.act;
+    if (act === "apply") { saved = clone(S); render(); }
+    else if (act === "discard") { S = clone(saved); render(); }
+    else if (act === "add-stun") { const v = $("stun-in").value.trim(); if (/^stuns?:/.test(v) && !S.stun.includes(v)) { S.stun.push(v); render(); } }
+    else if (act === "add-tracker") {
+      const v = $("tracker-in").value.trim(); UI.trackerInput = v;
+      if (!/^wss?:\/\/[^\s/]+/.test(v)) UI.trackerErr = "A tracker address starts with wss:// (or ws:// for a local one).";
+      else if (TRACKERS.some(x => x.url === v)) UI.trackerErr = "That tracker is already in the list.";
+      else { TRACKERS.push({ url: v, state: "slow", note: "Connecting…" }); UI.trackerErr = ""; UI.trackerInput = ""; setTimeout(() => { const x = TRACKERS.find(y => y.url === v); if (x) { x.state = "ok"; x.note = "0 peers seen · 120 ms"; render(); } }, 1600); }
+      render();
+    }
+    else if (act === "reset-trackers") { TRACKERS.splice(0, TRACKERS.length, ...[["wss://tracker.openwebtorrent.com", "312 peers seen · 48 ms"], ["wss://tracker.webtorrent.dev", "141 peers seen · 95 ms"], ["wss://tracker.btorrent.xyz", "Answering slowly · 1.8 s"]].map(([url, note]) => ({ url, state: note.startsWith("Answering") ? "slow" : "ok", note }))); render(); }
+  });
+  net.addEventListener("change", e => {
+    const t = e.target;
+    if (t.dataset.sw) { set(t.dataset.sw, t.checked); if (t.dataset.sw === "blockUnknown" || t.dataset.sw === "relayOnly") {} render(); }
+    else if (t.dataset.limit) { get(t.dataset.limit).on = t.checked; render(); }
+    else if (t.dataset.unit) { get(t.dataset.unit).u = t.value; render(); }
+    else if (t.dataset.num) { const v = parseInt(t.value, 10); if (!isNaN(v)) set(t.dataset.num, Math.max(0, v)); render(); }
+    else if (t.dataset.text) { set(t.dataset.text, t.value.trim()); if (t.dataset.text === "turnUrl" && !t.value.trim()) S.relayOnly = false; render(); }
+  });
+  net.addEventListener("input", e => { if (e.target.id === "tracker-in") UI.trackerInput = e.target.value; });
+  net.addEventListener("keydown", e => {
+    if (e.key === "Enter" && e.target.id === "tracker-in") net.querySelector('[data-act="add-tracker"]').click();
+    if (e.key === "Enter" && e.target.id === "stun-in") net.querySelector('[data-act="add-stun"]').click();
+  });
+
+  // Live numbers drift a little
+  setInterval(() => {
+    LIVE.up = Math.max(40, LIVE.up + (Math.random() - .5) * 120); LIVE.down = Math.max(100, LIVE.down + (Math.random() - .5) * 300);
+    LIVE.rtc = Math.max(4, Math.min(S.rtcMax, LIVE.rtc + Math.round((Math.random() - .5) * 2)));
+    const now = $("now"); if (now) now.outerHTML = nowHtml();
+    const live = net.querySelector(".side .live"); if (live) live.innerHTML = `<div><span>WebRTC</span><b>${LIVE.rtc}/${S.rtcMax}</b></div><div><span>Up</span><b>${(LIVE.up / 1000).toFixed(2)} MB/s</b></div><div><span>Down</span><b>${(LIVE.down / 1000).toFixed(2)} MB/s</b></div>`;
+  }, 1500);
+
+  $("width-ctl").addEventListener("click", e => { const v = e.target.closest("button")?.dataset.v; if (!v) return; $("width-ctl").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === v)); stage.dataset.width = v; render(); });
+  new ResizeObserver(() => { const n = stage.dataset.width === "phone" || net.clientWidth < 760; if (n !== net.classList.contains("narrow")) render(); }).observe(net);
+
+  const q = new URLSearchParams(location.search);
+  if (q.get("width") === "phone") { stage.dataset.width = "phone"; $("width-ctl").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === "phone")); }
+  if (q.get("block") === "1") S.blockUnknown = true;
+  if (q.get("profile")) UI.profile = q.get("profile");
+  render();
+  if (q.get("go")) setTimeout(() => $("sec-" + q.get("go"))?.scrollIntoView({ block: "start" }), 50);
+</script>
+</body>
+</html>

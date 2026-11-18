@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feeds POC</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/components.css">
+<style>
+  .frame { max-width: 1320px; }
+  .feeds { width: 100%; max-width: 1180px; height: 860px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; background: var(--color-1); border: var(--line) solid var(--rule); overflow: hidden; position: relative; }
+  .stage[data-width=phone] .feeds { max-width: 390px; height: 820px; }
+
+  .icon-btn { width: 36px; height: 36px; display: inline-grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--text-muted); cursor: pointer; flex: none; }
+  .icon-btn:hover { background: var(--color-3); color: var(--text); }
+  svg.i.sm { width: 15px; height: 15px; }
+
+  .scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: transparent transparent; }
+  .scroll:hover { scrollbar-color: rgba(101,88,68,.38) transparent; }
+  .scroll::-webkit-scrollbar { width: 10px; } .scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; }
+  .scroll:hover::-webkit-scrollbar-thumb { background-color: rgba(101,88,68,.38); }
+
+  /* Top bar: boards and sort */
+  .topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: var(--line) solid var(--rule-soft); min-width: 0; }
+  .brand { font-family: var(--font-display); font-weight: 300; font-size: 20px; letter-spacing: .3em; color: var(--color-10); flex: none; }
+  .boards { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; }
+  .boards button { flex: none; height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: none; cursor: pointer; font-size: 14.5px; color: var(--text-muted); white-space: nowrap; }
+  .boards button:hover { background: var(--color-3); color: var(--text); }
+  .boards button[aria-pressed=true] { background: var(--color-15); color: var(--color-1); }
+  .boards button .n { font-family: var(--font-mono); font-size: 12px; opacity: .7; margin-left: 4px; }
+  .sort { flex: none; display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--text-muted); }
+  .sort select { font: inherit; font-size: 13.5px; color: var(--text); background: none; border: 1px solid var(--rule-soft); border-radius: 999px; height: 30px; padding: 0 8px; }
+  .new-btn { flex: none; }
+  .narrow .brand, .narrow .sort span { display: none; }
+
+  .body { min-height: 0; }
+
+  /* Pictures: drawn scenes, patterns and print crops share one frame */
+  .pic { display: block; width: 100%; position: relative; overflow: hidden; background: var(--color-3); }
+  .pic svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .pic.print { background-image: var(--isolde); background-repeat: no-repeat; }
+
+  /* Author: colour dot + petname or short key */
+  .by { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--text-muted); min-width: 0; }
+  .by i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; }
+  .by b { font-weight: 500; color: var(--text); }
+  .by code { font-family: var(--font-mono); font-size: 13px; }
+  .stats { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 12.5px; color: var(--text-muted); }
+  .stats span { display: inline-flex; align-items: center; gap: 3px; }
+  .board-tag { font-family: var(--font-display); font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--color-10); }
+
+  /* ── A · Catalog ── */
+  .catalog { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; align-content: start; }
+  .tile { display: grid; grid-template-rows: auto auto; text-align: left; padding: 0; border: 1px solid var(--rule-soft); border-radius: 10px; overflow: hidden; background: var(--color-1); cursor: pointer; font: inherit; color: inherit; transition: transform .15s, box-shadow .15s; }
+  .tile:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(74,59,66,.14); }
+  .tile .pic { aspect-ratio: 1; }
+  .tile .count { position: absolute; right: 6px; bottom: 6px; padding: 2px 7px; border-radius: 999px; background: rgba(74,59,66,.72); color: var(--color-1); font-family: var(--font-mono); font-size: 11.5px; }
+  .tile .t { padding: 8px 10px 10px; display: grid; gap: 5px; }
+  .tile h3 { margin: 0; font-size: 14.5px; font-weight: 500; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .tile.hot .t { box-shadow: inset 0 3px 0 var(--color-2); }
+
+  /* ── B · Gallery ── */
+  .gallery { padding: 14px; columns: 4 220px; column-gap: 12px; }
+  .narrow .gallery { columns: 2; column-gap: 8px; padding: 8px; }
+  .shot { break-inside: avoid; margin: 0 0 12px; position: relative; border-radius: 10px; overflow: hidden; cursor: zoom-in; display: block; width: 100%; padding: 0; border: 0; text-align: left; font: inherit; color: inherit; background: none; }
+  .narrow .shot { margin-bottom: 8px; }
+  .shot .pic { border-radius: 10px; }
+  .shot .veil { position: absolute; inset: auto 0 0 0; padding: 30px 10px 9px; background: linear-gradient(to top, rgba(42,34,38,.78), rgba(42,34,38,0)); color: var(--color-1); opacity: 0; transition: opacity .2s; display: grid; gap: 3px; }
+  .shot:hover .veil, .shot:focus-visible .veil, .narrow .shot .veil { opacity: 1; }
+  .shot .veil b { font-weight: 500; font-size: 14px; line-height: 1.25; }
+  .shot .veil .stats, .shot .veil .by, .shot .veil .by b { color: var(--color-1); }
+  .shot .multi { position: absolute; top: 8px; right: 8px; padding: 2px 7px; border-radius: 999px; background: rgba(42,34,38,.6); color: var(--color-1); font-family: var(--font-mono); font-size: 11.5px; }
+
+  /* ── C · Threads ── */
+  .threads { padding: 16px; display: grid; gap: 14px; justify-items: center; align-content: start; }
+  .card-t { width: 100%; max-width: 640px; border: 1px solid var(--rule-soft); border-radius: 12px; background: var(--color-1); overflow: hidden; }
+  .card-t header { display: flex; align-items: center; gap: 8px; padding: 12px 14px 0; flex-wrap: wrap; }
+  .card-t header .when { margin-left: auto; font-family: var(--font-mono); font-size: 12.5px; color: var(--text-faint); }
+  .card-t h3 { margin: 8px 14px 4px; font-size: 19px; font-weight: 500; line-height: 1.25; cursor: pointer; }
+  .card-t .txt { margin: 0 14px 12px; color: var(--text); font-size: 15.5px; line-height: 1.45; }
+  .pics { display: grid; gap: 3px; cursor: zoom-in; }
+  .pics.n1 { height: 340px; }
+  .pics.n2 { grid-template-columns: 1fr 1fr; height: 280px; }
+  .pics.n3 { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; height: 340px; } .pics.n3 .pic:first-child { grid-row: span 2; }
+  .narrow .pics.n1, .narrow .pics.n3 { height: 260px; } .narrow .pics.n2 { height: 180px; }
+  .card-t .preview { padding: 6px 14px 4px; display: grid; gap: 8px; border-top: 1px solid var(--rule-soft); margin-top: 0; }
+  .card-t .preview .r { font-size: 14.5px; line-height: 1.4; }
+  .card-t .preview .r .by { margin-right: 6px; }
+  .card-t footer { display: flex; align-items: center; gap: 14px; padding: 10px 14px 12px; }
+  .card-t footer .grow { flex: 1; }
+  .link-btn { border: 0; background: none; padding: 0; cursor: pointer; font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--color-13); }
+
+  /* Quotes: >>1234 */
+  .q { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; margin: 0 2px; border-radius: 999px; background: rgba(188,77,45,.12); color: var(--color-10); font-family: var(--font-mono); font-size: 12.5px; cursor: pointer; border: 0; vertical-align: 1px; }
+  .q:hover { background: rgba(188,77,45,.22); }
+
+  /* ── Thread view (shared) ── */
+  .thread { position: absolute; inset: 0; z-index: 4; display: none; grid-template-columns: minmax(0, 1fr) min(620px, 100%); }
+  .thread.open { display: grid; }
+  .thread .shade { background: rgba(42,34,38,.4); cursor: pointer; }
+  .narrow .thread { grid-template-columns: minmax(0, 1fr); } .narrow .thread .shade { display: none; }
+  .panel { background: var(--color-1); border-left: var(--line) solid var(--rule); display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto auto; min-height: 0; animation: slide .25s ease; }
+  @keyframes slide { from { transform: translateX(40px); opacity: 0; } }
+  .panel-head { display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 16px; border-bottom: var(--line) solid var(--rule-soft); }
+  .panel-head .grow { flex: 1; min-width: 0; }
+  .panel-head h3 { margin: 0; font-size: 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .posts { padding: 6px 0 16px; }
+  .post { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; padding: 12px 16px; border-bottom: 1px solid rgba(199,174,141,.45); transition: background .4s; }
+  .post.flash { background: rgba(193,154,75,.22); }
+  .post .no { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; }
+  .post .no a { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-faint); text-decoration: none; cursor: pointer; }
+  .post .no a:hover { color: var(--color-10); }
+  .post .no .when { margin-left: auto; font-family: var(--font-mono); font-size: 12.5px; color: var(--text-faint); }
+  .post .thumb { width: 120px; border-radius: 6px; overflow: hidden; cursor: zoom-in; align-self: start; }
+  .post .thumb .pic { aspect-ratio: 1; }
+  .post.big-img .thumb { width: 100%; grid-column: 1 / -1; }
+  .post.big-img .thumb { height: min(380px, 48vh); }
+  .post .content { grid-column: 2; font-size: 15.5px; line-height: 1.45; min-width: 0; overflow-wrap: anywhere; }
+  .post.noimg .content, .post.big-img .content { grid-column: 1 / -1; }
+  .post.op h2 { margin: 2px 0 6px; font-size: 21px; font-weight: 500; line-height: 1.25; }
+  .post .backlinks { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 2px; align-items: center; font-size: 12.5px; color: var(--text-faint); }
+  .reply-box { border-top: var(--line) solid var(--rule-soft); padding: 10px 12px; display: flex; gap: 6px; align-items: flex-end; }
+  .reply-box .field { flex: 1; min-height: 42px; display: flex; align-items: center; padding: 0 14px; border-radius: 21px; background: var(--color-3); color: var(--color-5); font-size: 15px; }
+  .reply-box .quoting { display: none; }
+  .round { width: 42px; height: 42px; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--color-10); color: var(--color-1); cursor: pointer; flex: none; }
+
+  .viewer { position: absolute; inset: 0; z-index: 6; background: rgba(42,34,38,.86); display: none; place-items: center; padding: 24px; cursor: zoom-out; }
+  .viewer.open { display: grid; }
+  .viewer .pic { width: min(100%, 640px); border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+
+  /* ── Ephemeral: life, keeping, syncing ── */
+  .tile { position: relative; }
+  .pic-wrap { position: relative; display: block; }
+  .pic { transition: filter .8s; }
+  .h-fading .pic { filter: saturate(.5) opacity(.85); }
+  .h-last .pic { filter: saturate(.15) opacity(.65); }
+  .h-gone .pic { filter: grayscale(1) opacity(.4); }
+  .keep { position: absolute; top: 8px; left: 8px; z-index: 1; width: 30px; height: 30px; border-radius: 50%; border: 0; display: grid; place-items: center; background: rgba(242,226,196,.92); color: var(--color-15); cursor: pointer; opacity: 0; transition: opacity .15s, background .15s; }
+  .keep svg.i { width: 16px; height: 16px; }
+  .tile:hover .keep, .shot:hover .keep, .keep.on, .keep:focus-visible, .narrow .keep { opacity: 1; }
+  .keep.on { background: var(--color-14); }
+  .lifeline { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .life { display: block; flex: 1; min-width: 28px; max-width: 140px; height: 3px; border-radius: 2px; background: rgba(199,174,141,.5); overflow: hidden; }
+  .life i { display: block; height: 100%; border-radius: 2px; transition: width .6s, background .6s; }
+  .life-lbl { font-family: var(--font-display); font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+  .new-tag { font-family: var(--font-display); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; padding: 1px 6px; border-radius: 999px; background: var(--color-14); color: var(--color-15); margin-left: 6px; }
+  .fresh { animation: fresh 1.4s ease; }
+  @keyframes fresh { from { box-shadow: 0 0 0 3px var(--color-14); } }
+  .tile.ghost { border: 1.5px dashed var(--color-8); background: none; display: grid; place-items: center; min-height: 236px; cursor: default; animation: ghost 2.6s ease forwards; }
+  .tile.ghost:hover { transform: none; box-shadow: none; }
+  .ghost-box { display: grid; justify-items: center; gap: 4px; padding: 10px; text-align: center; font-size: 13px; color: var(--text-faint); }
+  .ghost-box b { font-weight: 500; font-size: 14px; color: var(--text-muted); }
+  .ghost-box svg.i { width: 22px; height: 22px; opacity: .6; }
+  @keyframes ghost { to { opacity: .35; } }
+  .shot.ghost, .card-t.ghost { display: none; }
+  .sync { flex: none; height: 30px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--rule); background: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text); }
+  .sync svg.i { width: 15px; height: 15px; }
+  .sync.on { background: var(--color-13); border-color: var(--color-13); color: var(--color-1); }
+  .narrow .sync span { display: none; }
+  .snapshot { margin: 14px 16px 0; padding: 10px 14px; border-radius: 10px; background: var(--color-3); display: flex; align-items: center; gap: 10px; font-size: 14px; flex-wrap: wrap; }
+  .snapshot .grow { flex: 1; min-width: 10ch; }
+  .statusline { display: flex; align-items: center; gap: 8px; padding: 7px 16px; border-top: var(--line) solid var(--rule-soft); font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; }
+  .statusline b { color: var(--text); font-weight: 500; }
+  .statusline svg.i { width: 15px; height: 15px; color: var(--color-13); flex: none; }
+  .statusline .grow { flex: 1; }
+  .statusline .tick { font-family: var(--font-mono); font-size: 12.5px; color: var(--color-14); }
+  .vital { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--rule-soft); font-size: 13.5px; color: var(--text-muted); flex-wrap: wrap; }
+  .vital .grow { flex: 1; }
+  .vital > .lifeline { width: 170px; flex: none; }
+  .vital .life { max-width: none; }
+  .keep-wide { height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--rule); background: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text); flex: none; }
+  .keep-wide svg.i { width: 15px; height: 15px; }
+  .keep-wide.on { background: var(--color-14); border-color: var(--color-14); color: var(--color-15); }
+  .reply-hint { font-size: 12.5px; color: var(--text-faint); padding: 0 16px 8px; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-reply" viewBox="0 0 24 24"><path d="M4 12.5c0-4 3.5-7 8-7s8 3 8 7-3.5 7-8 7c-1.3 0-2.6-.3-3.7-.7L4 20l1.2-3.6A6.6 6.6 0 0 1 4 12.5z"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M20.5 16l-5-5-8.5 8.5"/></symbol>
+  <symbol id="i-seed" viewBox="0 0 24 24"><path d="M12 21V11"/><path d="M12 11c0-4 3-7 8-7 0 5-3 7-8 7Z"/><path d="M12 14c0-3-2.5-5.5-7-5.5 0 4 2.5 5.5 7 5.5Z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M4.5 12L20 4.5 15.5 20l-3.5-6.5z"/><path d="M12 13.5l8-9"/></symbol>
+  <symbol id="i-sync" viewBox="0 0 24 24"><path d="M19.5 9A8 8 0 0 0 5 7.5M4.5 15A8 8 0 0 0 19 16.5"/><path d="M5 3.5v4h4M19 20.5v-4h-4"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6.5 3.5h11v17L12 16.5l-5.5 4z"/></symbol>
+</svg>
+
+<div class="frame">
+  <header class="masthead">
+    <a href="../index.html">← Isol POCs</a>
+    <h1>Feeds</h1>
+    <p>An image board, but modern. Three directions on the same boards and threads, to find the one that feels like Isol.</p>
+  </header>
+
+  <section class="sect">
+    <div class="toolbar">
+      <div><span class="lbl">Direction</span>
+        <div class="segmented" role="group" aria-label="Direction" id="dir-ctl">
+          <button data-v="catalog" aria-pressed="true">A · Catalog</button>
+          <button data-v="gallery" aria-pressed="false">B · Gallery</button>
+          <button data-v="threads" aria-pressed="false">C · Threads</button>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" id="time">▶ Time passes</button>
+      <button class="btn btn-sm" id="day">Skip a day</button>
+      <div><span class="lbl">Width</span>
+        <div class="segmented" role="group" aria-label="Width" id="width-ctl">
+          <button data-v="wide" aria-pressed="true">Wide</button>
+          <button data-v="phone" aria-pressed="false">Phone</button>
+        </div>
+      </div>
+    </div>
+    <div class="stage" id="stage" data-width="wide"><div class="feeds" id="feeds"></div></div>
+  </section>
+
+  <section class="sect">
+    <p class="eyebrow">Ephemeral boards</p>
+    <h2>Threads live while someone keeps them</h2>
+    <div class="notes">
+      <div><h3>Life you can see</h3><p>Under every thread, a thin bar shows how many devices keep it. It shrinks from Olive to Gilt ("Fading") to Madder ("Last copy"), and the pictures lose their colour as it goes. When nobody keeps it, it leaves a dashed "faded away" trace for a moment, then it's gone.</p></div>
+      <div><h3>Keep a thread</h3><p>The seed button on a tile, or "Keep" in a thread, makes your device seed it. Kept threads glow Gilt and get their own "Kept" tab. Replying keeps a thread too, so conversations you're part of stay alive while you're around.</p></div>
+      <div><h3>Sync a board</h3><p>Syncing a board's catalog means new threads arrive as they're posted. A board you don't sync shows the snapshot from your last visit, with one tap to start syncing.</p></div>
+      <div><h3>What it costs you</h3><p>The status line says what this device does for the network: which boards it syncs, how many threads it keeps, and roughly how much space that takes.</p></div>
+      <div><h3>Try it</h3><p>"Time passes" plays the network: peers come and go, threads nobody keeps fade and disappear, and synced boards get new threads. "Skip a day" jumps twelve hours. Keep a fading thread and watch it survive.</p></div>
+      <div><h3>Three ways to look</h3><p>A · Catalog (dense tiles, best for scanning), B · Gallery (the pictures), C · Threads (the talk). The ephemeral layer works the same in all three.</p></div>
+    </div>
+  </section>
+</div>
+
+<script src="../shared/isolde-480.js"></script>
+<script>
+  document.documentElement.style.setProperty("--isolde", `url("${window.ISOLDE_JPG}")`);
+  const $ = id => document.getElementById(id);
+  const root = $("feeds"), stage = $("stage");
+  const icon = (id, cls = "") => `<svg class="i ${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+  const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+  const C = { vellum: "#F2E2C4", parchment: "#D9C4A5", linen: "#C7AE8D", vermilion: "#EC4823", madder: "#BC4D2D", stone: "#A89C85", umber: "#786B55", sepia: "#655844", verdigris: "#528F8D", sage: "#7A8B76", olive: "#5E6950", gilt: "#C19A4B", aubergine: "#4A3B42" };
+
+  // ── Pictures ───────────────────────────────────────────────
+  // Scheme scenes from the brand page: ground, field, motif, accent, line.
+  const SCHEMES = {
+    vermilion: [C.vermilion, C.vellum, C.vellum, C.verdigris, C.parchment],
+    aubergine: [C.aubergine, C.sepia, C.gilt, C.vermilion, C.linen],
+    verdigris: [C.verdigris, C.vellum, C.vermilion, C.aubergine, C.vellum],
+    olive: [C.olive, C.sage, C.vellum, C.gilt, C.parchment],
+    madder: [C.madder, C.aubergine, C.vellum, C.gilt, C.vellum],
+    gilt: [C.gilt, C.vellum, C.aubergine, C.madder, C.aubergine],
+    sepia: [C.sepia, C.umber, C.vellum, C.verdigris, C.linen],
+  };
+  const DRAW = {
+    scene: (s) => { const [g, f, m, a, l] = SCHEMES[s]; return `<rect width="300" height="300" fill="${g}"/>
+      <path d="M0,300 L0,208 Q22,198 45,206 Q70,216 96,204 Q122,194 150,208 Q178,218 204,202 Q232,192 258,206 Q280,214 300,204 L300,300 Z" fill="${f}"/>
+      <line x1="46" y1="0" x2="45" y2="206" stroke="${l}" stroke-width="2"/><line x1="258" y1="0" x2="259" y2="206" stroke="${l}" stroke-width="2"/>
+      <circle cx="190" cy="118" r="52" fill="${m}"/><circle cx="190" cy="118" r="64" fill="none" stroke="${m}" stroke-width="2"/><circle cx="190" cy="118" r="14" fill="${a}"/>
+      ${[0, 1, 2, 3, 4, 5, 6].map(i => `<circle cx="${70 + i * 27}" cy="${252 + Math.sin(i / 6 * Math.PI) * 10}" r="3.5" fill="${l}"/>`).join("")}`; },
+    waves: ([bg, a, b]) => `<rect width="300" height="300" fill="${bg}"/>` + Array.from({ length: 13 }, (_, k) => `<path d="M-20 ${30 + k * 22} ${Array.from({ length: 9 }, (_, j) => `Q${j * 40} ${30 + k * 22 + (j % 2 ? -12 : 12)} ${j * 40 + 20} ${30 + k * 22}`).join(" ")}" fill="none" stroke="${k % 3 ? a : b}" stroke-width="5" stroke-linecap="round"/>`).join(""),
+    arches: ([bg, a, b]) => `<rect width="300" height="300" fill="${bg}"/>` + [0, 1, 2].map(i => `<path d="M${22 + i * 92} 300 V150 a40 40 0 0 1 80 0 V300 Z" fill="${i === 1 ? b : a}"/><path d="M${42 + i * 92} 300 V160 a20 20 0 0 1 40 0 V300 Z" fill="${bg}" opacity=".35"/>`).join("") + `<rect y="270" width="300" height="30" fill="${b}" opacity=".6"/>`,
+    moon: ([bg, a, b]) => `<rect width="300" height="300" fill="${bg}"/><circle cx="200" cy="96" r="44" fill="${a}"/><circle cx="218" cy="84" r="40" fill="${bg}"/>` + Array.from({ length: 6 }, (_, k) => `<line x1="${20 + k * 8}" y1="${190 + k * 18}" x2="${280 - k * 8}" y2="${190 + k * 18}" stroke="${b}" stroke-width="${4 - k * .4}" stroke-linecap="round" opacity="${1 - k * .12}"/>`).join("") + [[60, 50], [110, 30], [40, 120], [150, 70]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.5" fill="${a}"/>`).join(""),
+    stripes: (cols) => cols.map((c, i) => `<rect x="${i * 300 / cols.length}" width="${300 / cols.length + 1}" height="300" fill="${c}"/>`).join("") + `<line x1="234" y1="0" x2="234" y2="300" stroke="${C.parchment}" stroke-width="2"/><line x1="270" y1="0" x2="270" y2="300" stroke="${C.parchment}" stroke-width="2"/>`,
+    lily: ([bg, a, b]) => `<rect width="300" height="300" fill="${bg}"/>` + [[150, 150, 0], [150, 150, 72], [150, 150, 144], [150, 150, 216], [150, 150, 288]].map(([x, y, r]) => `<ellipse cx="${x}" cy="${y - 60}" rx="26" ry="62" fill="${a}" transform="rotate(${r} ${x} ${y})"/>`).join("") + `<circle cx="150" cy="150" r="22" fill="${b}"/><path d="M150 172 Q140 240 160 300" stroke="${b}" stroke-width="6" fill="none"/>`,
+  };
+  const CROPS = { goblet: ["330%", "68% 34%"], flowers: ["300%", "50% 6%"], chain: ["420%", "74% 62%"], curtain: ["260%", "92% 20%"], gown: ["240%", "30% 80%"], face: ["380%", "56% 18%"] };
+  // A picture: { print: crop } or { draw: kind, arg }, with a ratio (width / height).
+  function pic(p, ratio = p.r || 1) {
+    const style = ratio === "fill" ? "height:100%" : `aspect-ratio:${ratio}`;
+    if (p.print) { const [sz, pos] = CROPS[p.print]; return `<span class="pic print" style="${style};background-size:${sz};background-position:${pos}"></span>`; }
+    return `<span class="pic" style="${style}"><svg viewBox="0 0 300 300" preserveAspectRatio="xMidYMid slice">${DRAW[p.draw](p.arg)}</svg></span>`;
+  }
+
+  // ── Mock boards and threads ────────────────────────────────
+  const BOARDS = [["all", "All"], ["prints", "Prints"], ["sea", "Sea & ships"], ["gardens", "Gardens"], ["bench", "Workbench"]];
+  const A = {
+    isolde: { name: "Isolde", c: C.madder }, brangaene: { name: "Brangäne", c: C.verdigris }, mark: { name: "Mark", c: C.olive },
+    k1: { key: "e8bc·144f", c: C.gilt }, k2: { key: "17a2·d917", c: C.sepia }, k3: { key: "4e34·6bd1", c: C.aubergine }, k4: { key: "57b0·6372", c: C.umber }, k5: { key: "c210·9a0e", c: C.sage },
+  };
+  const by = id => { const a = A[id]; return `<span class="by" style="--c:${a.c}"><i></i>${a.name ? `<b>${a.name}</b>` : `<code>${a.key}</code>`}</span>`; };
+
+  const T = [
+    { no: 4021, board: "prints", by: "k1", t: "2h", title: "Found this print at a flea market. Real or reproduction?", text: "Paper feels old and the colours are flat lithograph, not halftone. The chain is printed in a green that almost looks enamel. Opinions?", pics: [{ print: "goblet", r: .8 }, { print: "chain", r: .8 }, { print: "flowers", r: .8 }], replies: 34, images: 9, peers: 21, hot: true, kept: true },
+    { no: 4019, board: "sea", by: "brangaene", t: "3h", title: "Night crossing to Cornwall, phone photos", text: "No filter, the sea really was that colour.", pics: [{ draw: "moon", arg: [C.aubergine, C.gilt, C.verdigris], r: .75 }, { draw: "waves", arg: [C.aubergine, C.verdigris, C.sage], r: 1 }], replies: 12, images: 5, peers: 9 },
+    { no: 4017, board: "gardens", by: "isolde", t: "5h", title: "First lilies of the year", text: "Planted these against the south wall in autumn. Worth the wait.", pics: [{ draw: "lily", arg: [C.olive, C.vellum, C.gilt], r: .8 }], replies: 18, images: 4, peers: 14 },
+    { no: 4016, board: "bench", by: "k2", t: "6h", title: "Printed the palette as a strip. Which colourway for the cover?", text: "Option 1 is the full palette, option 2 drops the greens.", pics: [{ draw: "stripes", arg: [C.vellum, C.vermilion, C.madder, C.gilt, C.verdigris, C.aubergine], r: 1.5 }, { draw: "stripes", arg: [C.vellum, C.vermilion, C.madder, C.gilt, C.aubergine], r: 1.5 }], replies: 41, images: 6, peers: 17, hot: true },
+    { no: 4014, board: "prints", by: "k3", t: "8h", title: "Arches study, gouache on toned paper", text: "", pics: [{ draw: "arches", arg: [C.parchment, C.madder, C.aubergine], r: .7 }], replies: 7, images: 2, peers: 2 },
+    { no: 4012, board: "sea", by: "k4", t: "9h", title: "Twenty-minute wave sketch", text: "Trying to get the rhythm without drawing every crest.", pics: [{ draw: "waves", arg: [C.vellum, C.verdigris, C.aubergine], r: 1.3 }], replies: 5, images: 1, peers: 1 },
+    { no: 4010, board: "prints", by: "mark", t: "12h", title: "Post your favourite Art Nouveau posters", text: "One each, say why. I'll start with the obvious one.", pics: [{ draw: "scene", arg: "vermilion", r: .75 }], replies: 63, images: 38, peers: 33, hot: true },
+    { no: 4008, board: "bench", by: "k5", t: "14h", title: "Linocut, work in progress", text: "Second block, registration is off by a hair.", pics: [{ draw: "scene", arg: "madder", r: 1 }, { draw: "scene", arg: "aubergine", r: 1 }], replies: 9, images: 3, peers: 5 },
+    { no: 4006, board: "gardens", by: "k1", t: "1d", title: "Is this mildew? (leaf photo)", text: "White spots on the underside only.", pics: [{ draw: "scene", arg: "olive", r: 1.2 }], replies: 14, images: 2, peers: 2 },
+    { no: 4004, board: "prints", by: "isolde", t: "1d", title: "Detail crops of the Isolde print", text: "The flowers in the hair are my favourite part.", pics: [{ print: "face", r: .8 }, { print: "flowers", r: 1 }], replies: 22, images: 7, peers: 19, kept: true },
+    { no: 4002, board: "bench", by: "k3", t: "2d", title: "Bookbinding: gilt edges, first try", text: "", pics: [{ draw: "scene", arg: "gilt", r: .8 }], replies: 11, images: 3, peers: 4 },
+    { no: 4001, board: "sea", by: "mark", t: "2d", title: "Harbour at dusk", text: "", pics: [{ draw: "scene", arg: "verdigris", r: 1.4 }, { draw: "scene", arg: "sepia", r: 1 }], replies: 6, images: 2, peers: 3 },
+  ];
+  // Two latest replies for the Threads preview
+  const LAST = {
+    4021: [["k2", 4058, "Look at the edge of the black: a real lithograph has no dots there."], ["isolde", 4061, null, "Agreed with", 4058, "and the paper tone is right for the 1890s."]],
+    4016: [["k4", 4044, "Option 2. The greens fight the vermilion on a cover."], ["brangaene", 4047, null, "Disagree with", 4044, "the verdigris is what makes it feel like the print."]],
+    4010: [["k1", 4036, "Anything with a curtain and a single figure, honestly."], ["k5", 4040, null, "Seconding", 4036]],
+  };
+
+  // A full thread for the thread view
+  function threadPosts(t) {
+    const base = [
+      { no: t.no, by: t.by, t: t.t, op: true, title: t.title, text: t.text, pic: t.pics[0] },
+    ];
+    const extra = t.no === 4021 ? [
+      { no: 4024, by: "k3", t: "2h", text: "Looks right to me. Check the bottom margin for a printer's line." },
+      { no: 4027, by: "k1", t: "2h", quote: 4024, text: "There is one! Tiny, bottom right.", pic: { print: "gown", r: 1 } },
+      { no: 4031, by: "brangaene", t: "1h", quote: 4027, text: "That line is the giveaway. Reproductions usually crop it." },
+      { no: 4058, by: "k2", t: "40m", text: "Look at the edge of the black: a real lithograph has no dots there." },
+      { no: 4061, by: "isolde", t: "12m", quote: 4058, text: "Agreed, and the paper tone is right for the 1890s.", pic: { print: "chain", r: 1 } },
+    ] : [
+      { no: t.no + 3, by: "k4", t: "1h", text: "Lovely. What did you use for this?" },
+      { no: t.no + 5, by: t.by, t: "48m", quote: t.no + 3, text: "Nothing fancy, honestly. Patience." },
+      { no: t.no + 9, by: "k5", t: "10m", text: "Saving this one.", pic: t.pics[1] },
+    ];
+    const posts = base.concat(extra);
+    // backlinks: which later posts quote this one
+    posts.forEach(p => p.backs = posts.filter(o => o.quote === p.no).map(o => o.no));
+    return posts;
+  }
+
+  // ── Ephemeral: a thread lives while someone keeps (seeds) it ──
+  const NEW_POOL = [
+    { board: "prints", by: "k2", title: "Moon study, two-colour risograph", text: "Vermilion over cream, one pass each.", pics: [{ draw: "moon", arg: [C.madder, C.vellum, C.gilt], r: .8 }] },
+    { board: "gardens", by: "brangaene", title: "Seed swap: who has verdigris sweet peas?", text: "", pics: [{ draw: "lily", arg: [C.verdigris, C.vellum, C.madder], r: 1 }] },
+    { board: "sea", by: "k5", title: "Storm coming in over the cliffs", text: "", pics: [{ draw: "waves", arg: [C.sepia, C.linen, C.vellum], r: 1 }] },
+    { board: "bench", by: "k4", title: "Arches stencil, free to use", text: "", pics: [{ draw: "arches", arg: [C.vellum, C.olive, C.gilt], r: 1 }] },
+    { board: "prints", by: "mark", title: "Gilt and aubergine, a colour study", text: "", pics: [{ draw: "scene", arg: "gilt", r: 1 }] },
+  ];
+  let nextNo = 4071, poolAt = 0, tickN = 0;
+  const S = { dir: "catalog", board: "all", sort: "bumped", open: null, synced: new Set(["prints", "gardens"]), sim: null };
+  const alive = t => t.peers + (t.kept ? 1 : 0);
+  function health(t) {
+    const n = alive(t);
+    if (t.dead || n === 0) return { k: "gone", label: "Faded away", c: C.stone, w: 0 };
+    if (n === 1) return { k: "last", label: t.kept ? "Only you keep it" : "Last copy", c: C.madder, w: 7 };
+    if (n < 5) return { k: "fading", label: "Fading", c: C.gilt, w: 12 + n * 6 };
+    if (n < 12) return { k: "steady", label: "", c: C.sage, w: 40 + n * 3 };
+    return { k: "alive", label: "", c: C.olive, w: Math.min(100, 64 + n) };
+  }
+  const lifeHtml = (t, label = true) => { const h = health(t); return `<span class="lifeline"><span class="life" title="${alive(t)} keeping it"><i style="width:${h.w}%;background:${h.c}"></i></span>${label && h.label ? `<span class="life-lbl" style="color:${h.k === "fading" ? "#8a6a26" : h.c}">${h.label}</span>` : ""}</span>`; };
+  const keepBtn = t => `<button class="keep${t.kept ? " on" : ""}" data-keep="${t.no}" aria-pressed="${!!t.kept}" title="${t.kept ? "You keep this thread. Click to let it go." : "Keep this thread: your device seeds it"}">${icon("seed")}</button>`;
+  const keepWide = t => `<button class="keep-wide${t.kept ? " on" : ""}" data-keep="${t.no}" aria-pressed="${!!t.kept}">${icon("seed")}${t.kept ? "Keeping" : "Keep"}</button>`;
+  const ghost = t => `<div class="tile ghost"><span class="ghost-box">${icon("seed")}<b>#${t.no} faded away</b>Nobody kept it</span></div>`;
+
+  const list = () => {
+    let l = T.filter(t => S.board === "all" || (S.board === "kept" ? t.kept : t.board === S.board));
+    if (S.sort === "replies") l = [...l].sort((a, b) => b.replies - a.replies);
+    if (S.sort === "new") l = [...l].sort((a, b) => b.no - a.no);
+    if (S.sort === "alive") l = [...l].sort((a, b) => alive(b) - alive(a));
+    return l;
+  };
+  const statsHtml = (t, peers = true) => `<span class="stats"><span title="Replies">${icon("reply", "sm")}${t.replies}</span><span title="Images">${icon("image", "sm")}${t.images}</span>${peers ? `<span title="Keeping it">${icon("seed", "sm")}${alive(t)}</span>` : ""}</span>`;
+  const boardName = id => (BOARDS.find(b => b[0] === id) || [id, id])[1];
+  const quoteChip = n => `<button class="q" data-quote="${n}">&gt;&gt;${n}</button>`;
+  const newTag = t => t.isNew ? `<span class="new-tag">New</span>` : "";
+
+  function snapshotHtml() {
+    if (S.board === "all" || S.board === "kept" || S.synced.has(S.board)) return "";
+    return `<div class="snapshot">${icon("sync")}<span class="grow">You're not syncing <b>${boardName(S.board)}</b>. This is how it looked when you last visited, 2 hours ago.</span><button class="sync" data-sync="${S.board}">${icon("sync")}<span>Sync board</span></button></div>`;
+  }
+
+  function catalogHtml() {
+    return `${snapshotHtml()}<div class="catalog">${list().map(t => { if (t.dead) return ghost(t); const h = health(t); return `
+      <div class="tile h-${h.k}${t.hot ? " hot" : ""}${t.isNew ? " fresh" : ""}" data-open="${t.no}" role="button" tabindex="0">
+        <span class="pic-wrap">${pic(t.pics[0], 1)}${t.pics.length > 1 ? `<span class="count">${t.pics.length} pics</span>` : ""}${keepBtn(t)}</span>
+        <span class="t"><span><span class="board-tag">${boardName(t.board)}</span>${newTag(t)}</span><h3>${esc(t.title)}</h3>${statsHtml(t)}${lifeHtml(t)}</span>
+      </div>`; }).join("")}</div>`;
+  }
+  function galleryHtml() {
+    return `${snapshotHtml()}<div class="gallery">${list().filter(t => !t.dead).map(t => { const h = health(t); return `
+      <div class="shot h-${h.k}${t.isNew ? " fresh" : ""}" data-open="${t.no}" role="button" tabindex="0">${pic(t.pics[0])}${t.pics.length > 1 ? `<span class="multi">1/${t.pics.length}</span>` : ""}${keepBtn(t)}
+        <span class="veil"><b>${esc(t.title)}</b><span style="display:flex;justify-content:space-between;gap:8px;align-items:center">${by(t.by)}${statsHtml(t, false)}</span>${h.label ? `<span class="life-lbl" style="color:var(--color-1);opacity:.85">${h.label}</span>` : ""}</span>
+      </div>`; }).join("")}</div>`;
+  }
+  function threadsHtml() {
+    return `${snapshotHtml()}<div class="threads">${list().filter(t => !t.dead).map(t => {
+      const last = LAST[t.no], h = health(t);
+      return `<article class="card-t h-${h.k}${t.isNew ? " fresh" : ""}">
+        <header>${by(t.by)}<span class="board-tag">· ${boardName(t.board)}</span>${newTag(t)}<span class="when">#${t.no} · ${t.t}</span></header>
+        <h3 data-open="${t.no}">${esc(t.title)}</h3>
+        ${t.text ? `<p class="txt">${esc(t.text)}</p>` : ""}
+        <div class="pics n${Math.min(3, t.pics.length)}" data-open="${t.no}">${t.pics.slice(0, 3).map(p => pic(p, "fill")).join("")}</div>
+        ${last ? `<div class="preview">${last.map(([a, n, text, pre, q, post]) => `<div class="r">${by(a)}${text ? esc(text) : `${pre} ${quoteChip(q)} ${post ? esc(post) : ""}`}</div>`).join("")}</div>` : ""}
+        <footer>${statsHtml(t)}<span style="flex:1;min-width:0">${lifeHtml(t)}</span>${keepWide(t)}<button class="link-btn" data-open="${t.no}">Open</button></footer>
+      </article>`; }).join("")}</div>`;
+  }
+
+  function threadView(no) {
+    const t = T.find(x => x.no === no), posts = threadPosts(t);
+    return `<div class="shade" data-act="close"></div>
+      <section class="panel h-${health(t).k}" aria-label="Thread">
+        <header class="panel-head"><button class="icon-btn" data-act="close" aria-label="Back">${icon("back")}</button>
+          <div class="grow"><span class="board-tag">${boardName(t.board)}</span><h3>${esc(t.title)}</h3></div>
+        </header>
+        <div class="vital">${lifeHtml(t)}<span>${t.dead ? "Nobody keeps this thread any more" : `${alive(t)} keeping it${t.kept ? ", you included" : ""}`}</span><span class="grow"></span>${t.dead ? "" : keepWide(t)}</div>
+        <div class="posts scroll" id="posts">${posts.map(p => `
+          <article class="post${p.op ? " op big-img" : ""}${p.pic ? "" : " noimg"}" id="p${p.no}">
+            <div class="no">${by(p.by)}<a data-quote="${p.no}" title="Quote this post">#${p.no}</a><span class="when">${p.t}</span></div>
+            ${p.pic ? `<div class="thumb" data-view="${p.no}">${pic(p.pic, p.op ? "fill" : 1)}</div>` : ""}
+            <div class="content">${p.op ? `<h2>${esc(p.title)}</h2>` : ""}${p.quote ? quoteChip(p.quote) + " " : ""}${p.text ? esc(p.text) : ""}
+              ${p.backs.length ? `<div class="backlinks">replies ${p.backs.map(quoteChip).join("")}</div>` : ""}</div>
+          </article>`).join("")}</div>
+        <div class="reply-hint">Replying keeps this thread on your device.</div>
+        <footer class="reply-box"><button class="icon-btn" aria-label="Attach image">${icon("image")}</button><span class="field">Reply to #${t.no}…</span><button class="round" aria-label="Post reply">${icon("send")}</button></footer>
+      </section>`;
+  }
+
+  function statusHtml() {
+    const kept = T.filter(t => t.kept && !t.dead), synced = BOARDS.slice(1).filter(([b]) => S.synced.has(b)).map(([, n]) => n);
+    const mb = (kept.reduce((m, t) => m + t.images * 0.45, 0) + synced.length * 0.8).toFixed(1);
+    return `<div class="statusline">${icon("sync")}<span>Syncing <b>${synced.length ? synced.join(", ") : "no boards"}</b></span>·<span>keeping <b>${kept.length}</b> thread${kept.length === 1 ? "" : "s"}</span>·<span><b>${mb} MB</b></span><span class="grow"></span>${S.sim ? `<span class="tick">time passing · ${tickN}h</span>` : ""}</div>`;
+  }
+
+  function render() {
+    const body = root.querySelector(".body"), keepScroll = body ? body.scrollTop : 0, posts = $("posts"), postsScroll = posts ? posts.scrollTop : 0;
+    root.classList.toggle("narrow", stage.dataset.width === "phone" || root.clientWidth < 640);
+    const view = { catalog: catalogHtml, gallery: galleryHtml, threads: threadsHtml }[S.dir]();
+    root.innerHTML = `
+      <div class="topbar">
+        <span class="brand">ISOL</span>
+        <nav class="boards" aria-label="Boards">${[...BOARDS, ["kept", "Kept"]].map(([id, name]) => `<button data-board="${id}" aria-pressed="${S.board === id}">${name}${id !== "all" ? `<span class="n">${T.filter(t => !t.dead && (id === "kept" ? t.kept : t.board === id)).length}</span>` : ""}</button>`).join("")}</nav>
+        ${S.board !== "kept" ? (() => { const on = S.board === "all" ? BOARDS.slice(1).every(([b]) => S.synced.has(b)) : S.synced.has(S.board);
+          return `<button class="sync${on ? " on" : ""}" data-sync="${S.board}" title="${on ? "Syncing: new threads arrive here. Click to stop." : "Sync this catalog: get new threads as they're posted"}">${icon("sync")}<span>${on ? "Syncing" : S.board === "all" ? "Sync all" : "Sync board"}</span></button>`; })() : ""}
+        <label class="sort"><span>Sort</span><select id="sort"><option value="bumped">Bumped</option><option value="new">Newest</option><option value="replies">Most replies</option><option value="alive">Most kept</option></select></label>
+        <button class="btn btn-sm btn-primary new-btn">${icon("plus")}<span>New thread</span></button>
+      </div>
+      <div class="body scroll">${view}</div>
+      ${statusHtml()}
+      <div class="thread${S.open ? " open" : ""}" id="thread">${S.open ? threadView(S.open) : ""}</div>
+      <div class="viewer" id="viewer"></div>`;
+    $("sort").value = S.sort;
+    root.querySelector(".body").scrollTop = keepScroll;
+    if ($("posts")) $("posts").scrollTop = postsScroll;
+    if (root.classList.contains("narrow")) root.querySelector(".new-btn span").textContent = "New";
+  }
+
+  // ── Events ─────────────────────────────────────────────────
+  root.addEventListener("click", e => {
+    const quote = e.target.closest("[data-quote]");
+    if (quote && S.open) {
+      const el = $(`p${quote.dataset.quote}`);
+      if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1200); }
+      return;
+    }
+    const v = e.target.closest("[data-view]");
+    if (v) { const p = threadPosts(T.find(x => x.no === S.open)).find(x => x.no === +v.dataset.view); const w = $("viewer"); w.innerHTML = pic(p.pic); w.classList.add("open"); w.onclick = () => w.classList.remove("open"); return; }
+    const k = e.target.closest("[data-keep]");
+    if (k) { const t = T.find(x => x.no === +k.dataset.keep); t.kept = !t.kept; return render(); }
+    const sy = e.target.closest("[data-sync]");
+    if (sy) {
+      const b = sy.dataset.sync, all = BOARDS.slice(1).map(([id]) => id);
+      if (b === "all") { const on = all.every(id => S.synced.has(id)); all.forEach(id => on ? S.synced.delete(id) : S.synced.add(id)); }
+      else S.synced.has(b) ? S.synced.delete(b) : S.synced.add(b);
+      return render();
+    }
+    const o = e.target.closest("[data-open]"); if (o) { S.open = +o.dataset.open; return render(); }
+    const b = e.target.closest("[data-board]"); if (b) { S.board = b.dataset.board; return render(); }
+    if (e.target.closest('[data-act="close"]')) { S.open = null; render(); }
+  });
+  root.addEventListener("change", e => { if (e.target.id === "sort") { S.sort = e.target.value; render(); } });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && S.open) { S.open = null; render(); } });
+  root.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches('[role="button"][data-open]')) { e.preventDefault(); S.open = +e.target.dataset.open; render(); } });
+
+  // ── Time passes: peers come and go, unkept threads fade away, synced boards get new threads ──
+  function tick() {
+    tickN++;
+    for (const t of T) {
+      if (t.dead) continue;
+      const r = Math.random();
+      if (r < (t.hot ? 0.18 : 0.38)) t.peers = Math.max(0, t.peers - 1 - (Math.random() < .25 ? 1 : 0));
+      else if (r > (t.hot ? 0.6 : 0.86)) t.peers += 1;
+      if (t.isNew && tickN - t.bornAt > 5) t.isNew = false;
+      if (alive(t) === 0) { t.dead = true; t.diedAt = tickN; }
+    }
+    // Faded threads leave a trace for a moment, then they're gone
+    for (let i = T.length - 1; i >= 0; i--) if (T[i].dead && tickN - T[i].diedAt > 3) { if (S.open === T[i].no) S.open = null; T.splice(i, 1); }
+    if (tickN % 4 === 0) {
+      const cand = NEW_POOL.filter(n => S.synced.has(n.board));
+      if (cand.length) {
+        const n = cand[poolAt++ % cand.length];
+        T.unshift({ ...n, no: nextNo++, t: "now", replies: 0, images: 1, peers: 2 + Math.floor(Math.random() * 3), isNew: true, bornAt: tickN });
+      }
+    }
+    render();
+  }
+  function stopSim() { clearInterval(S.sim); S.sim = null; $("time").textContent = "▶ Time passes"; render(); }
+  $("time").onclick = () => { if (S.sim) return stopSim(); S.sim = setInterval(tick, 900); $("time").textContent = "■ Pause"; render(); };
+  $("day").onclick = () => { for (let i = 0; i < 12; i++) tick(); };
+
+  function wire(ctl, fn) { $(ctl).addEventListener("click", e => { const v = e.target.closest("button")?.dataset.v; if (!v) return; $(ctl).querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === v)); fn(v); }); }
+  wire("dir-ctl", v => { S.dir = v; render(); });
+  wire("width-ctl", v => { stage.dataset.width = v; render(); });
+  new ResizeObserver(() => { const n = stage.dataset.width === "phone" || root.clientWidth < 640; if (n !== root.classList.contains("narrow")) render(); }).observe(root);
+
+  const q = new URLSearchParams(location.search);
+  if (q.get("dir")) { S.dir = q.get("dir"); $("dir-ctl").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === S.dir)); }
+  if (q.get("open")) S.open = +q.get("open");
+  if (q.get("board")) S.board = q.get("board");
+  if (q.get("width") === "phone") { stage.dataset.width = "phone"; $("width-ctl").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === "phone")); }
+  render();
+  // Deep link for review: ?ticks=12 plays that many hours at load (seeded so the result is repeatable)
+  if (q.get("ticks")) { let seed = 7; Math.random = () => (seed = (seed * 16807) % 2147483647) / 2147483647; for (let i = 0; i < +q.get("ticks"); i++) tick(); }
+</script>
+</body>
+</html>

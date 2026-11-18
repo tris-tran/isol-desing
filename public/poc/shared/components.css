@@ -1,0 +1,100 @@
+/* Pieces shared by the POC component pages: the review stage around a component,
+   and the parts components are made of (card shell, plates, tags, hex, checkbox).
+   Load after tokens.css. */
+
+/* ───────────── POC stage (not part of any component) ───────────── */
+.toolbar { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; margin-bottom: 24px; }
+.toolbar .segmented { flex-wrap: wrap; }
+.toolbar .lbl { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--text-muted); margin-right: 8px; }
+.stage {
+  padding: 40px 24px;
+  background: var(--color-3);
+  border: var(--line) solid var(--rule-soft);
+  display: flex; justify-content: center;
+}
+.stage[data-width=phone] .card { max-width: 380px; }
+@media (max-width: 760px) { .stage { padding: 20px 8px; } }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px 32px; }
+.notes h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
+.notes p { margin: 0; color: var(--text-muted); }
+.notes code { font-family: var(--font-mono); font-size: 15px; color: var(--text); }
+
+/* ───────────── Card: the component shell ─────────────
+   Secret material sits on Aubergine (dark plates), shareable material on Vellum. */
+.card {
+  --secret-bg: var(--color-15);
+  --secret-ink: var(--color-1);
+  --secret-dim: var(--color-4);
+  --secret-ornament: var(--color-14);
+  width: 100%;
+  max-width: 680px;
+  min-width: 0;
+  background: var(--color-1);
+  border: var(--line) solid var(--rule);
+  outline: var(--line) solid var(--color-1);
+  box-shadow: 0 0 0 5px var(--color-1), 0 0 0 6.5px var(--rule);
+}
+.card-head { padding: 22px 24px 18px; border-bottom: var(--line) solid var(--rule-soft); }
+.card-head .kicker { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .28em; text-transform: uppercase; color: var(--accent-strong); }
+.card-head h2 { margin: 4px 0 0; font-size: 26px; font-weight: 500; }
+.card-head p { margin: 8px 0 0; color: var(--text-muted); max-width: 54ch; }
+.card-body { padding: 24px; }
+.card-foot {
+  display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: center; justify-content: space-between;
+  padding: 16px 24px; border-top: var(--line) solid var(--rule-soft);
+}
+.card-foot .buttons { display: flex; gap: 8px; margin-left: auto; }
+.card-note { margin: 16px 0 0; font-size: 14px; font-style: italic; color: var(--text-muted); }
+
+/* ───────────── Plate: holds one value ───────────── */
+.plate { border: var(--line) solid var(--rule); }
+.plate.secret { background: var(--secret-bg); color: var(--secret-ink); border-color: var(--secret-bg); }
+.plate-head {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.plate.secret .plate-head { border-bottom-color: rgba(199,174,141,.35); }
+.plate-head h3 { margin: 0; font-family: var(--font-display); font-size: 12px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; }
+.plate-head .meta { font-family: var(--font-mono); font-size: 14px; color: var(--text-faint); }
+.plate.secret .plate-head .meta { color: var(--secret-dim); }
+.plate-head .actions { margin-left: auto; display: flex; gap: 2px; }
+.plate.secret .btn-sm { color: var(--secret-ink); border-color: transparent; }
+.plate.secret .btn-sm:hover { background: rgba(242,226,196,.12); }
+.plate-body { padding: 16px 14px 16px; position: relative; }
+
+.tag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: var(--r-sm); font-family: var(--font-display); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+.tag.keep { background: var(--color-10); color: var(--color-1); }
+.tag.share { background: var(--color-13); color: var(--color-1); }
+
+/* Hex values, grouped in fours */
+.hex { display: grid; grid-template-columns: repeat(8, max-content); gap: 6px 14px; font-family: var(--font-mono); font-size: 19px; line-height: 1.3; letter-spacing: .02em; }
+.hex span:nth-child(even) { opacity: .72; }
+.plate.public .hex { color: var(--text); }
+
+/* Masked secrets: dashed bars instead of the value */
+.masked .hex span { color: transparent; position: relative; user-select: none; }
+.masked .hex span::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 6px; margin-top: -3px;
+  background: repeating-linear-gradient(90deg, var(--secret-dim) 0 6px, transparent 6px 10px);
+  opacity: .55; border-radius: 3px;
+}
+
+/* Checkbox */
+.check { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: 15px; }
+.check input { appearance: none; width: 20px; height: 20px; margin: 0; border: var(--line) solid var(--color-9); border-radius: var(--r-sm); background: var(--color-1); display: grid; place-items: center; cursor: pointer; flex: none; }
+.check input:checked { background: var(--color-15); border-color: var(--color-15); }
+.check input:checked::after { content: ""; width: 5px; height: 10px; border: solid var(--color-1); border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
+
+.copied-flash { color: var(--color-14) !important; }
+.plate.public .copied-flash { color: var(--color-13) !important; }
+
+/* ───────────── Narrow cards (phone width) ───────────── */
+.card.narrow .hex { grid-template-columns: repeat(4, max-content); }
+.card.narrow .card-head, .card.narrow .card-body { padding-left: 16px; padding-right: 16px; }
+.card.narrow .card-foot { padding: 14px 16px; }
+.card.narrow .card-foot .buttons { margin-left: 0; width: 100%; flex-wrap: wrap; }
+.card.narrow .card-foot .buttons .btn { flex: 1 1 auto; }
+.card.narrow .plate-head .meta { display: none; }
+.card.narrow .plate-head .btn-sm .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.card.narrow .plate-head .btn-sm { width: 34px; padding: 0; }

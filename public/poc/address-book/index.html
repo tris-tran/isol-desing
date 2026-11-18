@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Address Book POC</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/components.css">
+<style>
+  .frame { max-width: 1280px; }
+  /* ───────────── Component: address book (.book) ───────────── */
+  .book { width: 100%; max-width: 1100px; height: 800px; display: grid; grid-template-columns: 380px minmax(0, 1fr); background: var(--color-1); border: var(--line) solid var(--rule); overflow: hidden; position: relative; }
+  .stage[data-width=phone] .book { max-width: 390px; height: 820px; }
+  .book.narrow { grid-template-columns: minmax(0, 1fr); }
+  .book.narrow.detail-open .list-pane { display: none; }
+  .book.narrow:not(.detail-open) .detail-pane { display: none; }
+
+  .icon-btn { width: 36px; height: 36px; display: inline-grid; place-items: center; border: 0; border-radius: 50%; background: none; color: var(--text-muted); cursor: pointer; flex: none; }
+  .icon-btn:hover { background: var(--color-3); color: var(--text); }
+  .scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: transparent transparent; }
+  .scroll:hover { scrollbar-color: rgba(101,88,68,.38) transparent; }
+
+  /* Avatar: initial on a colour taken from the key */
+  .av { --s: 40px; width: var(--s); height: var(--s); flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--av); color: var(--color-1); font-family: var(--font-display); font-weight: 500; font-size: calc(var(--s) * .42); }
+  .av.lg { --s: 84px; }
+  .av.dark-ink { color: var(--color-15); }
+  .av.nokey { font-family: var(--font-mono); font-size: calc(var(--s) * .3); }
+
+  /* Badges */
+  .badge { display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 7px; border-radius: 999px; font-family: var(--font-display); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+  .badge svg.i { width: 12px; height: 12px; stroke-width: 2.4; }
+  .badge.verified { background: var(--color-14); color: var(--color-15); }
+  .badge.trusted { background: var(--color-13); color: var(--color-1); }
+  .badge.warn { background: none; color: var(--color-10); border: 1px solid var(--color-10); }
+
+  /* Key colours: eight swatches read from the key, for comparing at a glance */
+  .keycolors { display: inline-flex; gap: 2px; }
+  .keycolors i { width: 10px; height: 10px; border-radius: 2px; background: var(--k); }
+  .keycolors.lg i { width: 22px; height: 22px; border-radius: 4px; }
+
+  /* ── List ── */
+  .list-pane { border-right: var(--line) solid var(--rule-soft); display: grid; grid-template-rows: auto auto minmax(0, 1fr); min-height: 0; min-width: 0; }
+  .book.narrow .list-pane { border-right: 0; }
+  .list-head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 8px 16px; }
+  .list-head h2 { flex: 1; margin: 0; font-size: 21px; font-weight: 500; }
+  .list-head .count { font-family: var(--font-mono); font-size: 13px; color: var(--text-faint); margin-left: 6px; font-weight: 400; }
+  .tools { padding: 0 12px 10px 16px; display: grid; gap: 8px; border-bottom: var(--line) solid var(--rule-soft); }
+  .search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border-radius: 999px; background: var(--color-3); color: var(--text-muted); }
+  .search input { flex: 1; min-width: 0; border: 0; background: none; outline: none; font: inherit; font-size: 15px; color: var(--text); }
+  .search input::placeholder { color: var(--color-5); }
+  .search svg.i { width: 17px; height: 17px; }
+  .filters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .filters button { flex: none; height: 28px; padding: 0 11px; border: 1px solid var(--rule-soft); border-radius: 999px; background: none; cursor: pointer; font-size: 13.5px; color: var(--text-muted); }
+  .filters button[aria-pressed=true] { background: var(--color-15); border-color: var(--color-15); color: var(--color-1); }
+  .filters button .n { font-family: var(--font-mono); font-size: 12px; opacity: .7; margin-left: 3px; }
+
+  .contacts { padding: 4px 0 16px; }
+  .letter { padding: 12px 16px 4px; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .2em; color: var(--text-faint); }
+  .row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; width: 100%; padding: 9px 14px 9px 16px; border: 0; background: none; text-align: left; cursor: pointer; font: inherit; color: inherit; }
+  .row:hover { background: rgba(217,196,165,.45); }
+  .row[aria-current=true] { background: var(--color-3); box-shadow: inset 3px 0 0 var(--color-10); }
+  .row .av { grid-row: span 2; }
+  .row .nm { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 16px; font-weight: 500; }
+  .row .nm span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .nm svg.i { width: 15px; height: 15px; flex: none; }
+  .row .nm .v { color: var(--color-14); } .row .nm .t { color: var(--color-13); } .row .nm .w { color: var(--color-10); }
+  .row .sub { grid-column: 2; display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; color: var(--text-muted); }
+  .row .sub code { font-family: var(--font-mono); font-size: 12.5px; white-space: nowrap; }
+  .row .sub .calls { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .keycolors { grid-column: 3; grid-row: 1 / span 2; }
+  .empty-list { padding: 30px 20px; text-align: center; color: var(--text-muted); font-size: 14.5px; }
+
+  /* ── Detail ── */
+  .detail-pane { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; min-width: 0; }
+  .detail-head { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-bottom: var(--line) solid var(--rule-soft); }
+  .detail-head .back { display: none; }
+  .book.narrow .detail-head .back { display: inline-grid; }
+  .detail-head .grow { flex: 1; }
+  .detail { padding: 0 0 28px; }
+  .who { display: grid; justify-items: center; gap: 6px; padding: 24px 20px 20px; text-align: center; border-bottom: 1px solid var(--rule-soft); }
+  .who .badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; min-height: 20px; }
+  .petname { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+  .petname input { width: min(320px, 70vw); border: 1px solid transparent; border-radius: 8px; background: none; text-align: center; font: inherit; font-size: 25px; font-weight: 500; color: var(--text); padding: 2px 8px; }
+  .petname input:hover { border-color: var(--rule-soft); }
+  .petname input:focus { outline: none; border-color: var(--color-10); background: var(--color-1); }
+  .petname input::placeholder { color: var(--color-7); font-weight: 400; }
+  .who .hint { font-size: 13px; color: var(--text-faint); }
+  .who .calls { font-size: 14.5px; color: var(--text-muted); }
+  .who .calls q { color: var(--text); font-style: italic; }
+  .who .calls q::before, .who .calls q::after { content: ""; }
+  .quick { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+
+  .sec { padding: 16px 20px 6px; border-bottom: 1px solid var(--rule-soft); }
+  .sec h4 { margin: 0 0 10px; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
+  .sec h4 .grow { flex: 1; }
+
+  .keyplate { border: var(--line) solid var(--rule); border-radius: 10px; overflow: hidden; margin-bottom: 12px; }
+  .keyplate .kp-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--rule-soft); }
+  .keyplate .kp-head .grow { flex: 1; }
+  .keyplate .kp-head h5 { margin: 0; font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; }
+  .keyplate .hex { padding: 14px; font-size: 20px; gap: 6px 16px; }
+  .narrow .keyplate .hex, .book.narrow .keyplate .hex { grid-template-columns: repeat(4, max-content); font-size: 18px; }
+  .keyplate .kp-foot { display: flex; align-items: center; gap: 10px; padding: 8px 12px 10px; font-size: 13px; color: var(--text-muted); border-top: 1px solid var(--rule-soft); flex-wrap: wrap; }
+
+  .mark-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 10px 0; }
+  .mark-row + .mark-row { border-top: 1px solid rgba(199,174,141,.45); }
+  .mark-row .ic { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--color-3); color: var(--text-muted); grid-row: span 2; }
+  .mark-row.on.v .ic { background: var(--color-14); color: var(--color-15); }
+  .mark-row.on.t .ic { background: var(--color-13); color: var(--color-1); }
+  .mark-row .ic svg.i { width: 20px; height: 20px; }
+  .mark-row b { font-weight: 500; font-size: 16px; }
+  .mark-row small { grid-column: 2; font-size: 13.5px; color: var(--text-muted); line-height: 1.35; }
+  .mark-row .switch-wrap { grid-column: 3; grid-row: 1 / span 2; }
+  .how { grid-column: 2 / -1; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .how button { height: 32px; padding: 0 12px; border: 1px solid var(--rule); border-radius: 999px; background: none; cursor: pointer; font: inherit; font-size: 13.5px; display: inline-flex; align-items: center; gap: 6px; }
+  .how button:hover { background: var(--color-3); }
+  .how button svg.i { width: 16px; height: 16px; }
+  .switch { appearance: none; width: 42px; height: 24px; margin: 0; border-radius: 999px; background: var(--color-7); position: relative; cursor: pointer; transition: background .2s; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--color-1); transition: transform .2s; }
+  .switch:checked { background: var(--color-13); }
+  .switch:checked::after { transform: translateX(18px); }
+  .switch.gilt:checked { background: var(--color-14); }
+
+  .alert { display: flex; gap: 10px; align-items: flex-start; margin: 14px 20px 0; padding: 12px 14px; border: var(--line) solid var(--color-10); border-left-width: 6px; border-radius: var(--r-sm); font-size: 14px; }
+  .alert svg.i { color: var(--color-10); width: 20px; height: 20px; flex: none; margin-top: 1px; }
+  .alert b { display: block; font-weight: 500; }
+  .alert button { margin-top: 6px; border: 0; background: none; padding: 0; font: inherit; color: var(--color-10); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+  .facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 14px; margin: 0 0 12px; }
+  .facts dt { color: var(--text-muted); } .facts dd { margin: 0; }
+  .facts .was { color: var(--text-faint); }
+  .danger-row { display: flex; gap: 8px; padding: 14px 20px; }
+  .btn-danger { border-color: var(--color-10); color: var(--color-10); }
+  .btn-danger:hover { background: var(--color-10); color: var(--color-1); }
+  .btn svg.i { width: 17px; height: 17px; }
+
+  /* Add contact */
+  .add { padding: 20px; display: grid; gap: 14px; max-width: 560px; }
+  .add h3 { margin: 0; font-size: 22px; font-weight: 500; }
+  .add p { margin: 0; color: var(--text-muted); }
+  .ways { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .ways button { display: grid; justify-items: center; gap: 6px; padding: 14px 8px; border: 1px solid var(--rule-soft); border-radius: 10px; background: none; cursor: pointer; font: inherit; font-size: 13.5px; }
+  .ways button[aria-pressed=true] { border-color: var(--color-15); box-shadow: inset 0 0 0 1px var(--color-15); }
+  .ways svg.i { width: 24px; height: 24px; color: var(--color-15); }
+  .keyfield { display: grid; gap: 6px; }
+  .keyfield label { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--text-muted); }
+  .keyfield textarea { width: 100%; height: 70px; padding: 10px 12px; resize: none; border: var(--line) solid var(--color-9); border-radius: 10px; background: var(--color-1); font-family: var(--font-mono); font-size: 16px; line-height: 1.4; color: var(--text); word-break: break-all; }
+  .keyfield textarea:focus { outline: none; border-color: var(--color-10); }
+  .keyfield .state { font-size: 13.5px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+  .keyfield .state.ok { color: var(--color-13); } .keyfield .state.bad { color: var(--color-10); }
+  .keyfield .state svg.i { width: 16px; height: 16px; }
+  .preview { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 12px; border-radius: 10px; background: var(--color-3); }
+  .preview .av { grid-row: span 2; }
+  .preview b { font-weight: 500; } .preview small { grid-column: 2; font-size: 13px; color: var(--text-muted); }
+  .preview .keycolors { grid-column: 3; grid-row: 1 / span 2; }
+  .add .known { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--color-10); }
+
+  .overlay { position: absolute; inset: 0; z-index: 5; background: rgba(74,59,66,.6); display: none; place-items: center; padding: 20px; }
+  .overlay.open { display: grid; }
+  .qrbox { width: min(100%, 380px); background: var(--color-1); border-radius: 14px; padding: 16px; display: grid; gap: 8px; text-align: center; }
+  .qrbox svg { width: 100%; height: auto; display: block; }
+  .qrbox b { font-weight: 500; font-size: 17px; } .qrbox small { color: var(--text-muted); font-size: 13.5px; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5.5A1.5 1.5 0 0 1 6.5 4H15"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-verified" viewBox="0 0 24 24"><path d="M12 2.5l2.4 2 3.1-.3.9 3 2.6 1.7-1.2 2.9 1.2 2.9-2.6 1.7-.9 3-3.1-.3-2.4 2-2.4-2-3.1.3-.9-3L2.9 14.5l1.2-2.9-1.2-2.9 2.6-1.7.9-3 3.1.3z"/><path d="M8.5 12.2l2.4 2.4 4.6-4.8"/></symbol>
+  <symbol id="i-verified-fill" viewBox="0 0 24 24"><path d="M12 2.5l2.4 2 3.1-.3.9 3 2.6 1.7-1.2 2.9 1.2 2.9-2.6 1.7-.9 3-3.1-.3-2.4 2-2.4-2-3.1.3-.9-3L2.9 14.5l1.2-2.9-1.2-2.9 2.6-1.7.9-3 3.1.3z" fill="currentColor" stroke="none"/><path d="M8.5 12.2l2.4 2.4 4.6-4.8" stroke="#F2E2C4" stroke-width="2"/></symbol>
+  <symbol id="i-trust" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></symbol>
+  <symbol id="i-trust-fill" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.2v.3"/></symbol>
+  <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 20h2M20 14v2"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M4 12h16"/></symbol>
+  <symbol id="i-compare" viewBox="0 0 24 24"><rect x="3" y="5" width="7.5" height="14" rx="1.5"/><rect x="13.5" y="5" width="7.5" height="14" rx="1.5"/><path d="M6 9.5h1.5M6 12h1.5M16.5 9.5H18M16.5 12H18"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 12.5c0-4 3.5-7 8-7s8 3 8 7-3.5 7-8 7c-1.3 0-2.6-.3-3.7-.7L4 20l1.2-3.6A6.6 6.6 0 0 1 4 12.5z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13"/></symbol>
+  <symbol id="i-paste" viewBox="0 0 24 24"><rect x="6" y="4.5" width="12" height="16" rx="1.5"/><path d="M9.5 4.5V3h5v1.5M9 10h6M9 13.5h6M9 17h3.5"/></symbol>
+</svg>
+
+<div class="frame">
+  <header class="masthead">
+    <a href="../index.html">← Isol POCs</a>
+    <h1>Address book</h1>
+    <p>The identities you've collected. The key is who someone is; the name is just what they, or you, call them.</p>
+  </header>
+
+  <section class="sect">
+    <div class="toolbar">
+      <div><span class="lbl">Show</span>
+        <div class="segmented" role="group" aria-label="Show" id="view-ctl">
+          <button data-v="isolde" aria-pressed="true">Verified &amp; trusted</button>
+          <button data-v="melot" aria-pressed="false">Verified only</button>
+          <button data-v="mark" aria-pressed="false">Trusted only</button>
+          <button data-v="k1" aria-pressed="false">Same name</button>
+          <button data-v="add" aria-pressed="false">Add contact</button>
+        </div>
+      </div>
+      <div><span class="lbl">Width</span>
+        <div class="segmented" role="group" aria-label="Width" id="width-ctl">
+          <button data-v="wide" aria-pressed="true">Wide</button>
+          <button data-v="phone" aria-pressed="false">Phone</button>
+        </div>
+      </div>
+    </div>
+    <div class="stage" id="stage" data-width="wide"><div class="book" id="book"></div></div>
+  </section>
+
+  <section class="sect">
+    <p class="eyebrow">Design notes</p>
+    <h2>Why it looks like this</h2>
+    <div class="notes">
+      <div><h3>The key comes first</h3><p>Every row shows the short key; every contact page shows the whole key in groups of four, big enough to read aloud, with Copy and their Isol QR. Names can change or be faked; the key can't.</p></div>
+      <div><h3>Key colours</h3><p>Eight swatches read straight from the key. Two keys that differ look different at a glance, which helps spot a look-alike before you compare the full key.</p></div>
+      <div><h3>Two names, clearly labelled</h3><p>The big name is yours to edit ("only you see this"). Under it: what they call themselves. If you haven't named someone, their own name shows in quotes, so it never looks like something you confirmed.</p></div>
+      <div><h3>Verified ≠ trusted</h3><p>Verified (Gilt) is about the key: you scanned their QR or compared keys in person, and the book remembers how and when. Trusted (Olive) is about the person. Either, both, or neither; Melot is verified but not trusted.</p></div>
+      <div><h3>Same name, different key</h3><p>When an unverified contact calls themselves the same as someone you've verified, the row gets a red mark and the page says so, with a way to compare the two keys.</p></div>
+      <div><h3>Adding someone</h3><p>Scan their QR, paste a key, or pick someone from a chat. The key is checked as you type, its colours appear, and if it's already in your book you're told who it is.</p></div>
+    </div>
+  </section>
+</div>
+
+<script src="../shared/isol-qr.global.js"></script>
+<script>
+  const $ = id => document.getElementById(id);
+  const book = $("book"), stage = $("stage");
+  const icon = (id, cls = "") => `<svg class="i ${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const PAL = ["#4A3B42", "#BC4D2D", "#528F8D", "#5E6950", "#C19A4B", "#655844", "#EC4823", "#7A8B76"];
+  const short = k => `${k.slice(0, 8)}…${k.slice(-8)}`;
+  const groups = k => k.match(/.{4}/g).map(g => `<span>${g}</span>`).join("");
+  const keyColors = (k, lg = "") => `<span class="keycolors ${lg}" aria-hidden="true">${[0, 8, 16, 24, 32, 40, 48, 56].map(i => `<i style="--k:${PAL[parseInt(k.slice(i, i + 2), 16) % 8]}"></i>`).join("")}</span>`;
+  const keyColor = k => PAL[parseInt(k.slice(0, 2), 16) % 8];
+
+  // ── Contacts (mock) ────────────────────────────────────────
+  const C = [
+    { id: "isolde", key: "e8bcf3823669444d0b49ad45d65088635d9fd8500a75b5f20b59abefa56a144f", pet: "Isolde", theirs: "Isolde", verified: { how: "scan", on: "3 Oct 2026" }, trusted: true, added: "3 Oct 2026", from: "Scanned in person" },
+    { id: "brangaene", key: "17162c921dc4d2518f9a101db33695df1afb56ab82f5ff3e5da6eec3ca5cd917", pet: "Brangäne", theirs: "Brangäne", verified: { how: "compare", on: "12 Oct 2026" }, trusted: true, added: "12 Oct 2026", from: "The Cornwall group" },
+    { id: "mark", key: "4e344c1b0f9d2a154d3a52060d06295ca4c4448f42896ebca9c0203d5f3e6bd1", pet: "King Mark", theirs: "Mark", verified: null, trusted: true, added: "20 Oct 2026", from: "The Cornwall group" },
+    { id: "melot", key: "a3f1c9d04e5b7a2286fd19ce0b3a4d77e21f68b9c0d54a1e9f73b2c6d8e01f45", pet: "Melot (careful)", theirs: "Melot", verified: { how: "scan", on: "1 Nov 2026" }, trusted: false, added: "1 Nov 2026", from: "Scanned in person" },
+    { id: "kurwenal", key: "57b0338330f79848dd9c52ed310cc4b542f0ed1a8a892b8e47ce5a99fbff6372", pet: "", theirs: "Kurwenal", verified: null, trusted: false, added: "20 Oct 2026", from: "The Cornwall group" },
+    { id: "k1", key: "e8bcf3829a1d77c03b5f2e6d4a1c09b8e7f3d2c1b0a99887766554433221100f", pet: "", theirs: "Isolde", verified: null, trusted: false, added: "Today", from: "Prints board, thread #4021" },
+    { id: "k2", key: "c2109a0e5d3f71b8a6c4e2f09d1b3a5c7e9f0a2b4c6d8e1f3a5b7c9d0e2f4a6b", pet: "Printer from the board", theirs: "inkwell", theirsWas: "inky", verified: null, trusted: false, added: "9 Nov 2026", from: "Prints board, thread #4010" },
+    { id: "k3", key: "7d0e5f1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6", pet: "", theirs: "", verified: null, trusted: false, added: "14 Nov 2026", from: "Pasted key" },
+  ];
+  const nameOf = c => c.pet || (c.theirs ? `“${c.theirs}”` : short(c.key));
+  const sortName = c => (c.pet || c.theirs || "~" + c.key).toLowerCase();
+  // An unverified contact claiming the same name as a verified one
+  const lookAlike = c => !c.verified && c.theirs && C.find(o => o !== c && o.verified && (o.theirs === c.theirs || o.pet === c.theirs));
+  const avatar = (c, size = "") => { const col = keyColor(c.key), label = c.pet || c.theirs; return `<span class="av ${size}${col === "#C19A4B" ? " dark-ink" : ""}${label ? "" : " nokey"}" style="--av:${col}" aria-hidden="true">${label ? label.replace(/^\W+/, "")[0].toUpperCase() : c.key.slice(0, 2)}</span>`; };
+
+  const S = { sel: "isolde", filter: "all", q: "", add: false, asking: null, addKey: "", addWay: "paste" };
+
+  // ── List ───────────────────────────────────────────────────
+  const FILTERS = [["all", "All", () => true], ["verified", "Verified", c => c.verified], ["trusted", "Trusted", c => c.trusted], ["unverified", "Not verified", c => !c.verified]];
+  function listHtml() {
+    const f = FILTERS.find(x => x[0] === S.filter)[2], q = S.q.trim().toLowerCase();
+    const shown = C.filter(f).filter(c => !q || [c.pet, c.theirs, c.key].some(v => v && v.toLowerCase().includes(q))).sort((a, b) => { const na = !(a.pet || a.theirs), nb = !(b.pet || b.theirs); return na !== nb ? na - nb : sortName(a).localeCompare(sortName(b)); });
+    let letter = "", rows = "";
+    for (const c of shown) {
+      const l = /^[a-z]/.test(sortName(c)) ? sortName(c)[0].toUpperCase() : "#";
+      if (l !== letter) { letter = l; rows += `<div class="letter">${l}</div>`; }
+      const la = lookAlike(c);
+      const calls = c.pet && c.theirs && c.pet !== c.theirs ? `<span class="calls">“${esc(c.theirs)}”</span>` : "";
+      rows += `<button class="row" data-sel="${c.id}" aria-current="${!S.add && S.sel === c.id}">
+        ${avatar(c)}
+        <span class="nm"><span>${esc(nameOf(c))}</span>${c.verified ? `<span class="v" title="Verified">${icon("verified-fill")}</span>` : ""}${c.trusted ? `<span class="t" title="Trusted">${icon("trust-fill")}</span>` : ""}${la ? `<span class="w" title="Same name as a verified contact">${icon("alert")}</span>` : ""}</span>
+        <span class="sub"><code>${c.key.slice(0, 8)}…</code>${calls}${!c.pet && !c.theirs ? `<span class="calls" style="font-style:italic">no name</span>` : ""}</span>
+        ${keyColors(c.key)}
+      </button>`;
+    }
+    return `<section class="list-pane" aria-label="Contacts">
+      <header class="list-head"><h2>Contacts<span class="count">${C.length}</span></h2><button class="btn btn-sm btn-primary" data-act="add">${icon("plus")}Add</button></header>
+      <div class="tools">
+        <label class="search">${icon("search")}<input id="q" placeholder="Name or key" value="${esc(S.q)}" aria-label="Search contacts"></label>
+        <div class="filters">${FILTERS.map(([k, l, fn]) => `<button data-filter="${k}" aria-pressed="${S.filter === k}">${l}<span class="n">${C.filter(fn).length}</span></button>`).join("")}</div>
+      </div>
+      <div class="contacts scroll">${rows || `<div class="empty-list">No contacts match.</div>`}</div>
+    </section>`;
+  }
+
+  // ── Detail ─────────────────────────────────────────────────
+  function detailHtml(c) {
+    const la = lookAlike(c);
+    const vHow = c.verified ? (c.verified.how === "scan" ? `You scanned their QR in person on ${c.verified.on}.` : `You compared keys with them on ${c.verified.on}.`) : "You haven't checked this key with them yet.";
+    const asking = S.asking === c.id;
+    return `<section class="detail-pane" aria-label="Contact">
+      <header class="detail-head"><button class="icon-btn back" data-act="back" aria-label="Back">${icon("back")}</button><span class="grow"></span>
+        <button class="btn btn-sm btn-ghost">${icon("chat")}Message</button></header>
+      <div class="detail scroll">
+        <div class="who">
+          ${avatar(c, "lg")}
+          <div class="badges">${c.verified ? `<span class="badge verified">${icon("check")}Verified</span>` : ""}${c.trusted ? `<span class="badge trusted">${icon("check")}Trusted</span>` : ""}${la ? `<span class="badge warn">${icon("alert")}Same name as ${esc(la.pet || la.theirs)}</span>` : ""}</div>
+          <div class="petname"><input id="pet" value="${esc(c.pet)}" placeholder="Give them a name" aria-label="Your name for this contact"></div>
+          <div class="hint">Your name for them. Only you see it.</div>
+          <div class="calls">${c.theirs ? `They call themselves <q>“${esc(c.theirs)}”</q>${c.theirsWas ? ` <span style="color:var(--text-faint)">(was “${esc(c.theirsWas)}”)</span>` : ""}` : "They haven't chosen a name"}</div>
+        </div>
+        ${la ? `<div class="alert">${icon("alert")}<div><b>Another contact also calls themselves “${esc(c.theirs)}”</b>${esc(la.pet || la.theirs)} is verified, and this is a different key. It could be a second device, someone with the same name, or someone pretending.<br><button data-sel="${la.id}">Compare with ${esc(la.pet || la.theirs)}'s key</button></div></div>` : ""}
+
+        <div class="sec"><h4>Public key<span class="grow"></span>${keyColors(c.key)}</h4>
+          <div class="keyplate">
+            <div class="kp-head"><h5>Their identity</h5><span class="tag share">Public</span><span class="grow"></span>
+              <button class="btn btn-sm btn-ghost" data-act="copy"><svg class="i"><use href="#i-copy"/></svg><span class="lbl">Copy</span></button>
+              <button class="btn btn-sm btn-ghost" data-act="qr">${icon("qr")}<span class="lbl">QR</span></button></div>
+            <div class="hex" aria-label="Public key">${groups(c.key)}</div>
+            <div class="kp-foot">${keyColors(c.key, "lg")}<span>Key colours: a quick way to tell keys apart. Compare the full key to be sure.</span></div>
+          </div>
+        </div>
+
+        <div class="sec"><h4>Your marks</h4>
+          <div class="mark-row v${c.verified ? " on" : ""}">
+            <span class="ic">${icon("verified")}</span><b>Verified</b>
+            <span class="switch-wrap"><input type="checkbox" class="switch gilt" data-mark="verified" ${c.verified || asking ? "checked" : ""} aria-label="Verified"></span>
+            <small>It's really them: this key belongs to the person you think. ${vHow}</small>
+            ${asking ? `<div class="how"><span style="font-size:13.5px;color:var(--text-muted);width:100%">How did you check?</span><button data-how="scan">${icon("scan")}I scanned their QR in person</button><button data-how="compare">${icon("compare")}We compared the key</button><button data-how="cancel">Cancel</button></div>` : ""}
+          </div>
+          <div class="mark-row t${c.trusted ? " on" : ""}">
+            <span class="ic">${icon("trust")}</span><b>Trusted</b>
+            <span class="switch-wrap"><input type="checkbox" class="switch" data-mark="trusted" ${c.trusted ? "checked" : ""} aria-label="Trusted"></span>
+            <small>You trust this person. ${c.trusted ? "" : "Separate from verified: you can know who someone is and still not trust them."}</small>
+          </div>
+        </div>
+
+        <div class="sec"><h4>Details</h4>
+          <dl class="facts"><dt>Added</dt><dd>${c.added}</dd><dt>From</dt><dd>${esc(c.from)}</dd>${c.theirsWas ? `<dt>Name history</dt><dd>“${esc(c.theirs)}” <span class="was">· before: “${esc(c.theirsWas)}”</span></dd>` : ""}</dl>
+        </div>
+        <div class="danger-row"><button class="btn btn-sm btn-danger">${icon("trash")}Remove contact</button></div>
+      </div>
+    </section>`;
+  }
+
+  // ── Add contact ────────────────────────────────────────────
+  function addHtml() {
+    const k = S.addKey.replace(/^isol:pub:/, "").replace(/\s/g, "").toLowerCase();
+    const valid = /^[0-9a-f]{64}$/.test(k), known = valid && C.find(c => c.key === k);
+    let state = "";
+    if (k && !valid) state = `<span class="state bad">${icon("x")}${/[^0-9a-f]/.test(k) ? "A key only has 0–9 and a–f" : `${k.length} of 64 characters`}</span>`;
+    else if (valid) state = `<span class="state ok">${icon("check")}A valid public key</span>`;
+    return `<section class="detail-pane" aria-label="Add contact">
+      <header class="detail-head"><button class="icon-btn back" data-act="back" aria-label="Back">${icon("back")}</button><span class="grow"></span><button class="icon-btn" data-act="back" aria-label="Close">${icon("x")}</button></header>
+      <div class="scroll"><div class="add">
+        <h3>Add a contact</h3>
+        <p>All you need is their public key. A name can come later.</p>
+        <div class="ways">${[["scan", "scan", "Scan their QR"], ["paste", "paste", "Paste a key"], ["chat", "chat", "From a chat"]].map(([k2, ic, l]) => `<button data-way="${k2}" aria-pressed="${S.addWay === k2}">${icon(ic)}${l}</button>`).join("")}</div>
+        <div class="keyfield"><label for="addkey">Public key</label>
+          <textarea id="addkey" spellcheck="false" placeholder="64 characters, or isol:pub:…">${esc(S.addKey)}</textarea>${state}</div>
+        ${valid ? (known ? `<div class="known">${icon("alert")}Already in your book as <b>${esc(nameOf(known))}</b>.</div>
+            <button class="btn btn-ghost" data-sel="${known.id}">Open ${esc(nameOf(known))}</button>`
+          : `<div class="preview">${avatar({ key: k, pet: "", theirs: "" })}<b>New contact</b><small><code>${short(k)}</code></small>${keyColors(k)}</div>
+            <div class="keyfield"><label for="newpet">Your name for them (optional)</label><textarea id="newpet" style="height:44px;font-family:var(--font-body);font-size:16px" placeholder="e.g. Isolde"></textarea></div>
+            <button class="btn btn-primary" data-act="save">${icon("plus")}Add to contacts</button>`) : ""}
+      </div></div>
+    </section>`;
+  }
+
+  function render() {
+    const narrow = stage.dataset.width === "phone" || book.clientWidth < 760;
+    book.classList.toggle("narrow", narrow);
+    const listScroll = book.querySelector(".contacts")?.scrollTop, detScroll = book.querySelector(".detail")?.scrollTop;
+    const c = C.find(x => x.id === S.sel);
+    book.innerHTML = listHtml() + (S.add ? addHtml() : c ? detailHtml(c) : "") + `<div class="overlay" id="overlay"></div>`;
+    if (listScroll != null) book.querySelector(".contacts").scrollTop = listScroll;
+    if (detScroll != null && book.querySelector(".detail")) book.querySelector(".detail").scrollTop = detScroll;
+  }
+  function open(detail) { book.classList.toggle("detail-open", detail); }
+
+  // ── Events ─────────────────────────────────────────────────
+  book.addEventListener("click", async e => {
+    const sel = e.target.closest("[data-sel]");
+    if (sel) { S.sel = sel.dataset.sel; S.add = false; S.asking = null; open(true); render(); book.querySelector(".detail")?.scrollTo(0, 0); press("view-ctl", ["isolde", "melot", "mark", "k1"].includes(S.sel) ? S.sel : null); return; }
+    const f = e.target.closest("[data-filter]"); if (f) { S.filter = f.dataset.filter; return render(); }
+    const how = e.target.closest("[data-how]");
+    if (how) { const c = C.find(x => x.id === S.sel); if (how.dataset.how !== "cancel") c.verified = { how: how.dataset.how, on: "today" }; S.asking = null; return render(); }
+    const w = e.target.closest("[data-way]"); if (w) { S.addWay = w.dataset.way; if (S.addWay === "scan") S.addKey = "isol:pub:5f0a8c2e1d4b6f9a3c7e0b2d5f8a1c4e7b0d3f6a9c2e5b8d1f4a7c0e3b6d9f2a"; return render(); }
+    const a = e.target.closest("[data-act]"); if (!a) return;
+    const act = a.dataset.act, c = C.find(x => x.id === S.sel);
+    if (act === "add") { S.add = true; S.addKey = ""; open(true); press("view-ctl", "add"); render(); }
+    else if (act === "back") { S.add = false; open(false); render(); }
+    else if (act === "copy") { try { await navigator.clipboard.writeText(c.key); } catch (err) {} a.querySelector(".lbl").textContent = "Copied"; setTimeout(() => a.isConnected && (a.querySelector(".lbl").textContent = "Copy"), 1200); }
+    else if (act === "qr") {
+      const o = $("overlay");
+      o.innerHTML = `<div class="qrbox">${isolQr("isol:pub:" + c.key)}<b>${esc(nameOf(c))}</b><small>Their public key as an Isol QR. Scan it on another device to add them there.</small></div>`;
+      o.classList.add("open"); o.onclick = ev => { if (!ev.target.closest(".qrbox")) o.classList.remove("open"); };
+    }
+    else if (act === "save") {
+      const k = S.addKey.replace(/^isol:pub:/, "").replace(/\s/g, "").toLowerCase(), pet = ($("newpet")?.value || "").trim();
+      const id = "n" + Date.now(); C.push({ id, key: k, pet, theirs: "", verified: S.addWay === "scan" ? { how: "scan", on: "today" } : null, trusted: false, added: "Today", from: S.addWay === "scan" ? "Scanned in person" : "Pasted key" });
+      S.add = false; S.sel = id; render();
+    }
+  });
+  book.addEventListener("change", e => {
+    const m = e.target.dataset.mark; if (!m) return;
+    const c = C.find(x => x.id === S.sel);
+    if (m === "verified") { if (e.target.checked) S.asking = c.id; else { c.verified = null; S.asking = null; } }
+    else c.trusted = e.target.checked;
+    render();
+  });
+  book.addEventListener("input", e => {
+    if (e.target.id === "q") { S.q = e.target.value; const pos = e.target.selectionStart; render(); const q = $("q"); q.focus(); q.setSelectionRange(pos, pos); }
+    if (e.target.id === "pet") { const c = C.find(x => x.id === S.sel); c.pet = e.target.value; const row = book.querySelector(`[data-sel="${c.id}"] .nm span`); if (row) row.textContent = nameOf(c); }
+    if (e.target.id === "addkey") { S.addKey = e.target.value; const pos = e.target.selectionStart; render(); const t = $("addkey"); t.focus(); t.setSelectionRange(pos, pos); }
+  });
+  book.addEventListener("focusout", e => { if (e.target.id === "pet") render(); });
+
+  // POC toolbar
+  function press(ctl, v) { $(ctl).querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === v)); }
+  $("view-ctl").addEventListener("click", e => {
+    const v = e.target.closest("button")?.dataset.v; if (!v) return; press("view-ctl", v);
+    if (v === "add") { S.add = true; S.addKey = "e8bcf3823669444d0b49ad45d65088635d9fd8500a75b5f"; } else { S.add = false; S.sel = v; S.asking = null; }
+    open(true); render();
+  });
+  $("width-ctl").addEventListener("click", e => { const v = e.target.closest("button")?.dataset.v; if (!v) return; press("width-ctl", v); stage.dataset.width = v; render(); });
+  new ResizeObserver(() => { const n = stage.dataset.width === "phone" || book.clientWidth < 760; if (n !== book.classList.contains("narrow")) render(); }).observe(book);
+
+  const q = new URLSearchParams(location.search);
+  if (q.get("width") === "phone") { stage.dataset.width = "phone"; press("width-ctl", "phone"); }
+  if (q.get("show")) $("view-ctl").querySelector(`[data-v="${q.get("show")}"]`)?.click();
+  if (q.get("list") === "1") open(false);
+  render();
+</script>
+</body>
+</html>

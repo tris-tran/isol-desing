@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>isol-qr.js Demo</title>
+<!-- ES modules don't load from file://. Serve the poc folder, e.g.: python3 -m http.server -d poc, then open /isol-qr/demo.html -->
+<link rel="stylesheet" href="../shared/tokens.css">
+<style>
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+  figure { margin: 0; border: var(--line) solid var(--rule); background: var(--color-3); }
+  figure > div { padding: 12px; }
+  figure svg { display: block; width: 100%; height: auto; }
+  figcaption { padding: 8px 12px; background: var(--color-1); font-family: var(--font-mono); font-size: 14px; border-top: var(--line) solid var(--rule); }
+  .ok { color: var(--color-13); } .bad { color: var(--color-10); }
+  pre { font-family: var(--font-mono); font-size: 15px; background: var(--color-1); border: 1px solid var(--rule-soft); padding: 12px; overflow-x: auto; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <header class="masthead"><a href="../index.html">← Isol POCs</a><h1>isol-qr.js</h1><p>One file, one function: data in, halftone QR code out.</p></header>
+  <section class="sect">
+    <pre>import { isolQr } from './isol-qr.js'
+element.innerHTML = isolQr('isol:pub:9dd4994d…')</pre>
+    <div class="grid" id="grid"></div>
+  </section>
+</div>
+<script src="../shared/qr.js"></script>
+<script type="module">
+  import { isolQr } from './isol-qr.js'
+  const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'
+  const text = n => 'isol:test:' + Array.from({ length: n - 10 }, (_, i) => ALPHA[(i * 37 + n) & 63]).join('')
+  const cases = [16, 64, 65, 207, 256, 257, 800, 801, 1273, 1274, 1500]
+  const grid = document.getElementById('grid')
+
+  // Decode check with jsQR, at 8 and 3 px per module.
+  const decode = (svg, ppm) => new Promise(res => {
+    const w = +svg.match(/viewBox="0 0 (\d+)/)[1], img = new Image()
+    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }))
+    img.onload = () => {
+      const px = w * ppm, cv = document.createElement('canvas'); cv.width = cv.height = px
+      const ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0, px, px); URL.revokeObjectURL(url)
+      res(IsolQr.decode(ctx.getImageData(0, 0, px, px).data, px, px))
+    }
+    img.src = url
+  })
+
+  const results = []
+  for (const n of cases) {
+    const t = text(n), svg = isolQr(t)
+    const fig = document.createElement('figure')
+    fig.innerHTML = `<div>${svg}</div><figcaption>${n} bytes · <span>checking…</span></figcaption>`
+    grid.appendChild(fig)
+    const ok8 = (await decode(svg, 8)) === t, ok3 = (await decode(svg, 3)) === t
+    fig.querySelector('span').outerHTML = `<span class="${ok8 && ok3 ? 'ok' : 'bad'}">${ok8 ? '✓' : '✗'}8 ${ok3 ? '✓' : '✗'}3</span>`
+    results.push(`${n}:${ok8 ? '✓' : '✗'}${ok3 ? '✓' : '✗'}`)
+  }
+  document.title = 'DONE ' + results.join(' ')
+</script>
+</body>
+</html>

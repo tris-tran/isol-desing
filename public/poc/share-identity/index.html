@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Share Identity POC</title>
+<link rel="stylesheet" href="../shared/tokens.css">
+<link rel="stylesheet" href="../shared/components.css">
+<style>
+  /* Component: share identity (.shi). The public half of an identity, as an Isol QR code and as text.
+     Everything here is safe to share, so it all sits on light plates. */
+
+  .card-head .who { margin-top: 10px; font-family: var(--font-mono); font-size: 15px; color: var(--text-muted); }
+  .card-head .who b { color: var(--text); font-weight: 400; }
+
+  .qr-stage { background: var(--color-3); padding: 18px; display: grid; justify-items: center; gap: 12px; }
+  .qr-stage .qr { width: 100%; max-width: 480px; cursor: zoom-in; box-shadow: 0 0 0 var(--line) var(--rule-soft); }
+  .qr-stage .qr svg { display: block; width: 100%; height: auto; }
+  .holds { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .holds .lbl { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--text-muted); }
+  .holds code { font-family: var(--font-mono); font-size: 14px; color: var(--text-muted); }
+
+  .key-row { display: flex; gap: 14px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+  .key-row .hex { flex: 1; min-width: 0; }
+
+  .actions-bar { display: flex; flex-wrap: wrap; gap: 8px; }
+  .elsewhere { margin: 18px 0 0; font-size: 15px; color: var(--text-muted); }
+  .elsewhere a { color: var(--color-13); font-weight: 500; }
+
+  .scan { position: fixed; inset: 0; z-index: 50; background: var(--color-1); display: none; place-items: center; cursor: zoom-out; }
+  .scan.open { display: grid; }
+  .scan svg { width: min(96vw, 96vh); height: auto; }
+  .scan .hint { position: fixed; top: 8px; right: 12px; font-family: var(--font-display); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--text-muted); }
+
+  .shi.narrow .qr-stage { padding: 10px; }
+  .shi.narrow .actions-bar .btn { flex: 1 1 auto; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5.5A1.5 1.5 0 0 1 6.5 4H15"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+</svg>
+
+<div class="frame">
+  <header class="masthead">
+    <a href="../index.html">← Isol POCs</a>
+    <h1>Share identity</h1>
+    <p>The public half of an identity: a QR code people can scan and a key they can copy. Nothing secret on this screen.</p>
+  </header>
+
+  <section class="sect">
+    <div class="toolbar">
+      <div><span class="lbl">Width</span>
+        <div class="segmented" role="group" aria-label="Width" id="width-ctl">
+          <button data-width="wide" aria-pressed="true">Wide</button>
+          <button data-width="phone" aria-pressed="false">Phone</button>
+        </div>
+      </div>
+      <button class="btn btn-sm" id="new-id">New identity</button>
+    </div>
+
+    <div class="stage" id="stage" data-width="wide">
+      <article class="card shi" id="shi" aria-labelledby="shi-title"></article>
+    </div>
+  </section>
+
+  <section class="sect">
+    <p class="eyebrow">Design notes</p>
+    <h2>Why it looks like this</h2>
+    <div class="notes">
+      <div><h3>All light, on purpose</h3><p>Share identity and Move identity are a pair. Here everything is public, so it sits on light plates with the green "Share" tag. Move identity puts its QR on the dark secret plate, behind a cover.</p></div>
+      <div><h3>The Isol QR, small tier</h3><p>A public key is tiny: 64 bytes on its own, 73 with the <code>isol:pub:</code> prefix. That puts it in the smallest tiers (dot 0.30 or 0.40), so Isolde shows clearly through the code.</p></div>
+      <div><h3>Two forms</h3><p>"Isol link" says what the code is, so the app can recognise it when scanned. "Key only" is the bare hex, for pasting into other tools. Copy always gives the exact text in the code.</p></div>
+      <div><h3>A way across</h3><p>A line under the key points to Move identity, so someone looking to use this identity on another device doesn't try to do it with the public key.</p></div>
+    </div>
+  </section>
+</div>
+
+<div class="scan" id="scan" role="dialog" aria-modal="true" aria-label="Full screen QR"><span class="hint">Click or Esc to close</span><div id="scan-art"></div></div>
+
+<script src="../shared/identity-crypto.js"></script>
+<script src="../shared/isol-qr.global.js"></script>
+<script>
+  const root = document.getElementById("shi"), stage = document.getElementById("stage");
+  const state = { identity: IsolCrypto.create(), form: "link", svg: "" };
+
+  const icon = id => `<svg class="i" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+  const short = hex => `${hex.slice(0, 8)}…${hex.slice(-8)}`;
+  const groups = hex => hex.match(/.{4}/g).map(g => `<span>${g}</span>`).join("");
+  const payload = () => state.form === "link" ? `isol:pub:${state.identity.publicKey}` : state.identity.publicKey;
+
+  function render() {
+    root.classList.toggle("narrow", stage.dataset.width === "phone" || root.clientWidth < 520);
+    const text = payload(), bytes = new TextEncoder().encode(text).length;
+    state.svg = isolQr(text);
+    const pk = state.identity.publicKey;
+    root.innerHTML = `
+      <header class="card-head">
+        <div class="kicker">Identity</div>
+        <h2 id="shi-title">Share identity</h2>
+        <p>This is your public key. Anyone can have it: it tells people it's you, and it can't be used to act as you.</p>
+        <div class="who">Public key <b>${short(pk)}</b></div>
+      </header>
+      <div class="card-body">
+        <div class="plate public">
+          <div class="plate-head">
+            <h3>Scan to add</h3><span class="tag share">Share</span>
+            <div class="actions"><button class="btn btn-sm btn-ghost" data-act="full">${icon("expand")}<span class="lbl">Full screen</span></button></div>
+          </div>
+          <div class="qr-stage">
+            <div class="qr" data-act="full" title="Full screen">${state.svg}</div>
+            <div class="holds">
+              <span class="lbl">Holds</span>
+              <div class="segmented" role="group" aria-label="What the code holds">
+                <button data-act="form" data-form="link" aria-pressed="${state.form === "link"}">Isol link</button>
+                <button data-act="form" data-form="key" aria-pressed="${state.form === "key"}">Key only</button>
+              </div>
+              <code>${bytes} bytes</code>
+            </div>
+          </div>
+        </div>
+
+        <div class="gap" style="height:14px"></div>
+
+        <div class="plate public">
+          <div class="plate-head">
+            <h3>Public key</h3><span class="tag share">Share</span><span class="meta">32 bytes · hex</span>
+            <div class="actions"><button class="btn btn-sm btn-ghost" data-act="copy" data-copy="key">${icon("copy")}<span class="lbl">Copy</span></button></div>
+          </div>
+          <div class="plate-body"><div class="hex" aria-label="Public key">${groups(pk)}</div></div>
+        </div>
+
+        <p class="elsewhere">Want this identity on another device? That needs the private key: use <a href="../move-identity/index.html">Move identity</a>.</p>
+      </div>
+      <footer class="card-foot">
+        <div class="actions-bar">
+          <button class="btn btn-primary" data-act="share">${icon("share")}Share</button>
+          <button class="btn btn-ghost" data-act="copy" data-copy="payload">${icon("copy")}<span class="lbl">Copy ${state.form === "link" ? "link" : "key"}</span></button>
+          <button class="btn btn-ghost" data-act="png">${icon("download")}Save image</button>
+        </div>
+      </footer>`;
+  }
+
+  async function copy(b) {
+    const text = b.dataset.copy === "key" ? state.identity.publicKey : payload();
+    try { await navigator.clipboard.writeText(text); } catch (e) {}
+    const label = b.querySelector(".lbl"), use = b.querySelector("use"), old = label.textContent;
+    label.textContent = "Copied"; use.setAttribute("href", "#i-check"); b.classList.add("copied-flash");
+    setTimeout(() => { label.textContent = old; use.setAttribute("href", "#i-copy"); b.classList.remove("copied-flash"); }, 1200);
+  }
+
+  function savePng() {
+    const img = new Image(), url = URL.createObjectURL(new Blob([state.svg], { type: "image/svg+xml" }));
+    img.onload = () => {
+      const px = 1200, cv = document.createElement("canvas"); cv.width = cv.height = px;
+      cv.getContext("2d").drawImage(img, 0, 0, px, px); URL.revokeObjectURL(url);
+      cv.toBlob(b => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `isol-identity-${state.identity.publicKey.slice(0, 8)}.png`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); });
+    };
+    img.src = url;
+  }
+
+  root.addEventListener("click", async e => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const act = b.dataset.act;
+    if (act === "form") { state.form = b.dataset.form; render(); }
+    else if (act === "copy") copy(b);
+    else if (act === "full") { document.getElementById("scan-art").innerHTML = state.svg; document.getElementById("scan").classList.add("open"); }
+    else if (act === "share") { try { await navigator.share({ title: "My Isol identity", text: payload() }); } catch (err) {} }
+    else if (act === "png") savePng();
+  });
+  document.getElementById("scan").onclick = () => document.getElementById("scan").classList.remove("open");
+  document.addEventListener("keydown", e => { if (e.key === "Escape") document.getElementById("scan").classList.remove("open"); });
+
+  // POC toolbar
+  document.getElementById("new-id").onclick = () => { state.identity = IsolCrypto.create(); render(); };
+  const widthCtl = document.getElementById("width-ctl");
+  widthCtl.addEventListener("click", e => {
+    const w = e.target.closest("button")?.dataset.width; if (!w) return;
+    stage.dataset.width = w; widthCtl.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.width === w)); render();
+  });
+  new ResizeObserver(() => {
+    const narrow = stage.dataset.width === "phone" || root.clientWidth < 520;
+    if (narrow !== root.classList.contains("narrow")) render();
+  }).observe(root);
+
+  const p = new URLSearchParams(location.search);
+  if (p.get("form") === "key") state.form = "key";
+  if (p.get("width") === "phone") { stage.dataset.width = "phone"; widthCtl.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.width === "phone")); }
+  render();
+</script>
+</body>
+</html>
